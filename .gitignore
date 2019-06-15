@@ -1,0 +1,10 @@
+# LaTeX compilation files
+*.aux
+*.log
+*.pdf
+
+# C compilation files
+
+*.out
+*.o
+
