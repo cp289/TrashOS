@@ -1,0 +1,35 @@
+\documentclass[twocolumn,11pt]{article}
+
+\newcommand{\trashos}{Tra\$hOS }
+
+\title{Developing \trashos}
+\author{Charles Parham}
+\date{2019-06-14}
+
+\begin{document}
+
+    \maketitle
+
+    \section*{Introduction}
+
+    Operating systems are incredibly complicated pieces of software and very
+    challenging to develop. Here process of developing \trashos is documented
+    with the hope of easing the learning process for the reader.
+
+    \section{Essential Background}
+
+    Familiarity with the C language and the bare basics of using \verb|gcc| is
+    essential. Furthermore, you must have experimented with making basic
+    userspace applications in x86 assembly language and dissassembling C source
+    files. The better you understand the relationship between C and the
+    generated assembly code, the better.
+
+    \section{Beginning}
+
+    You should start by learning what object files are and what linking is.
+    Then, read through the documentation of the GNU Linker. This is available on
+    most linux systems via \verb|info ld|. Understanding the concepts in Section
+    3 is especially important. Thankfully this is {\it really} well-documented.
+
+\end{document}
+
