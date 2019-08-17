@@ -1,0 +1,26 @@
+#####   BUILD PROCESS   #####
+
+This project requires a GCC cross compiler for each target architecture.
+Supported architectures are i386 and x86_64. For building an EFI bootloader, a
+cross compiler for the x86_64-w64-mingw32 or x86_64-w64-mingw32 targets are
+needed.
+
+Once necessary cross compilers are installed, modify make.config as needed.
+Below are the supported make.config contents.
+
+To build i386 system:
+    
+    ARCH?=i386
+    MARCH?=i686
+
+To build x86_64 system:
+    
+    ARCH?=x86_64
+    MARCH?=x86_64
+
+Lastly, simply run `make`.
+
+#####   DOCUMENTATION   #####
+
+For a guide on the learning/development process of this project, run
+`make guide.pdf`.
