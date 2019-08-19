@@ -4,7 +4,9 @@
 *.pdf
 
 # C compilation files
-
 *.out
 *.o
 
+# Image files
+*.iso
+iso/
