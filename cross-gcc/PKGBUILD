@@ -1,0 +1,141 @@
+# TODO support build resume: fix prepare()
+
+_mingw_targets="x86_64-w64-mingw32 i686-w64-mingw32"
+_elf_targets="x86_64-elf i686-elf"
+_targets="$_mingw_targets $_elf_targets"
+
+pkgname=cross-gcc
+pkgver=9.1.0
+binver=2.32
+mingwver=6.0.0
+pkgrel=2
+pkgdesc="GCC cross-compiler for OS development on $_targets"
+arch=('x86_64')
+url="https://gcc.gnu.org/"
+license=('GPL' 'LGPL' 'FDL' 'custom')
+makedepends=('devtools' 'gcc' 'make' 'bison' 'flex' 'gmp' 'mpfr' 'mpc' 'libmpc' 'texinfo')
+options=('staticlibs' '!buildflags')
+
+source=(
+    https://ftp.gnu.org/gnu/binutils/binutils-${binver}.tar.xz{,.sig}
+    https://ftp.gnu.org/gnu/gcc/gcc-9.1.0/gcc-${pkgver}.tar.xz{,.sig}
+    https://sourceforge.net/projects/mingw-w64/files/mingw-w64/mingw-w64-release/mingw-w64-v${mingwver}.tar.bz2{,.sig}
+)
+
+validpgpkeys=(
+    '33C235A34C46AA3FFB293709A328C3A2C3C45C06'  # Jakub Jelinek <jakub@redhat.com>
+    '3A24BC1E8FB409FA9F14371813FCEF89DD9E3C4F'  # Nick Clifton <nickc@redhat.com>
+    'CAF5641F74F7DFBA88AE205693BDB53CD4EBC740'  # JonY <jon_y@users.sourceforge.net>
+)
+
+sha256sums=(
+    '0ab6c55dd86a92ed561972ba15b9b70a8b9f75557f896446c82e8b36e473ee04'
+    'SKIP'
+    '79a66834e96a6050d8fe78db2c3b32fb285b230b855d0a66288235bc04b327a0'
+    'SKIP'
+    '805e11101e26d7897fce7d49cbb140d7bac15f3e085a91e0001e80b2adaf48f0'
+    'SKIP'
+)
+
+PREFIX="/usr"
+
+prepare() {
+
+    # Prepare build directories
+    for _target in $_targets; do
+        mkdir -pv "$srcdir"/$_target-binutils-$binver
+        cd "$srcdir"/binutils-$binver
+        find . -print | cpio -pdlm ../$_target-binutils-$binver
+
+        cd "$srcdir"
+        mkdir -pv "$srcdir"/$_target-gcc-$pkgver
+        cd "$srcdir"/gcc-$pkgver
+        find . -print | cpio -pdlm ../$_target-gcc-$pkgver
+
+        mkdir -pv "$srcdir"/build-$_target-binutils
+        mkdir -pv "$srcdir"/build-$_target-gcc
+    done
+
+    for _target in $_mingw_targets; do
+        mkdir -pv "$srcdir"/headers-$_target
+        mkdir -pv "$srcdir"/crt-$_target
+    done
+
+    multilib_config="$srcdir"/x86_64-elf-gcc-$pkgver/gcc/config/i386/t-x86_64-elf
+    gcc_config="$srcdir"/x86_64-elf-gcc-$pkgver/gcc/config.gcc
+
+    # Add libgcc multilib variant without red-zone requirement
+    echo 'MULTILIB_OPTIONS += mno-red-zone' >> "$multilib_config"
+    echo 'MULTILIB_DIRNAMES += no-red-zone' >> "$multilib_config"
+    sed 's:x86_64-\*-elf\*):x86_64-\*-elf\*)\n\ttmake_file="${tmake_file} i386/t-x86_64-elf":' \
+        "$gcc_config" >> "$gcc_config".tmp
+    mv -v "$gcc_config"{.tmp,}
+}
+
+package() {
+
+    export PATH="$PATH:${pkgdir}${PREFIX}/bin"
+    export PREFIX
+
+    for _target in $_mingw_targets; do
+
+        # Build binutils
+        echo "Building binutils for $_target..."
+        cd "$srcdir"/build-$_target-binutils
+        ../$_target-binutils-$binver/configure --target=$_target --prefix="$PREFIX" \
+            --with-sysroot --disable-nls --disable-multilib --disable-werror
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-binutils
+
+        # Install binutils
+        echo "Installing binutils for $_target..."
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-binutils install
+
+        # Configure GCC
+        echo "Configuring GCC for $_target..."
+        cd "$srcdir"/build-$_target-gcc
+        ../$_target-gcc-$pkgver/configure --target=$_target --prefix="$PREFIX" \
+            --disable-nls --enable-languages=c,lto --without-headers \
+            --disable-multilib
+
+        # Build GCC
+        echo "Building GCC for $_target..."
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-gcc all-gcc
+
+        # Install GCC
+        echo "Installing GCC for $_target..."
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-gcc install-gcc
+    done
+    
+    for _target in $_elf_targets; do
+        # Build binutils
+        echo "Building binutils for $_target..."
+        cd "$srcdir"/build-$_target-binutils
+        ../$_target-binutils-$binver/configure --target=$_target --prefix="$PREFIX" \
+            --with-sysroot --disable-nls --disable-werror
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-binutils
+
+        # Install binutils
+        echo "Installing binutils for $_target..."
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-binutils install
+
+        # Configure GCC
+        echo "Configuring GCC for $_target..."
+        cd "$srcdir"/build-$_target-gcc
+        ../$_target-gcc-$pkgver/configure --target=$_target --prefix="$PREFIX" \
+            --disable-nls --enable-languages=c --without-headers
+
+        # Build GCC
+        echo "Building GCC for $_target..."
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-gcc all-gcc
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-gcc all-target-libgcc
+
+        # Install GCC
+        echo "Installing GCC for $_target..."
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-gcc install-gcc
+        make DESTDIR="$pkgdir" -C "$srcdir"/build-$_target-gcc install-target-libgcc
+    done
+
+    # Remove documentation (this causes file conflicts)
+    rm -r "${pkgdir}"${PREFIX}/share
+}
+

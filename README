@@ -1,9 +1,14 @@
 #####   BUILD PROCESS   #####
 
 This project requires a GCC cross compiler for each target architecture.
-Supported architectures are i386 and x86_64. For building an EFI bootloader, a
-cross compiler for the x86_64-w64-mingw32 or x86_64-w64-mingw32 targets are
+Supported architectures are i686 and x86_64. For building an EFI bootloader, a
+cross compiler for the i686-w64-mingw32 or x86_64-w64-mingw32 targets are
 needed.
+
+If running an Arch Linux based system, a PKGBUILD is available for all relevant
+GCC cross-compilers in /cross-gcc. Modify the variables _mingw_targets and
+_elf_targets within /cross-gcc/PKGBUILD as necessary and run `makepkg -s` to
+build the cross-gcc package.
 
 Once necessary cross compilers are installed, modify make.config as needed.
 Below are the supported make.config contents.
