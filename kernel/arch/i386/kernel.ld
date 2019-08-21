@@ -6,34 +6,41 @@ ENTRY(_start);
 
 SECTIONS
 {
-    . = 1M;
+    /**
+     * TODO The following line would create a virtual higher-half address space,
+     * leaving 512M for the kernel.
+     * KERNEL_VMA = 0xE0000000;
+     */
+
+    KERNEL_LMA = 1M;
+    KERNEL_VMA = 1M;
+
+    . = KERNEL_VMA;
 
     /**
-     * NOTE: the expression `BLOCK(4K) : ALIGN(4K)` simply aligns the output
-     * section to a 4K byte boundary. According to the documentation of ld, this
-     * is probably redundant. The expression `ALIGN(4K) :` is shorter and
-     * probably does the same thing (except perhaps on some legacy systems).
+     * Each section is aligned to a 4K (page) boundary. The AT function
+     * instructs the linker to load each section starting at KERNEL_LMA.
      */
-    .text BLOCK(4K) : ALIGN(4K)
+
+    .text ALIGN(4K) : AT(ADDR(.text) - KERNEL_VMA + KERNEL_LMA)
     {
         *(.multiboot2)
         *(.text)
     }
 
-    .rodata BLOCK(4K) : ALIGN(4K)
+    .rodata ALIGN(4K) : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA)
     {
         *(.rodata)
     }
 
-    .data BLOCK(4K) : ALIGN(4K)
+    .data ALIGN(4K) : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA)
     {
         *(.data)
     }
 
-    .bss BLOCK(4K) : ALIGN(4K)
+    .bss ALIGN(4K) : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA)
     {
         *(COMMON)
         *(.bss)
     }
 }
-
