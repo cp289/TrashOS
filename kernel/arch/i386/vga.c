@@ -10,13 +10,15 @@
 #include "string.h"
 #include "vga.h"
 
-size_t VGA_HEIGHT;
-size_t VGA_WIDTH;
+size_t VGA_HEIGHT = 25;
+size_t VGA_WIDTH = 80;
 
 size_t vga_row;
 size_t vga_col;
 uint8_t vga_color;
-uint16_t *vga_buffer;
+
+volatile uint8_t *crtc_data = (void*) 0x3C0;
+uint16_t *vga_buffer = (void*) 0xB8000;
 
 static inline uint8_t vga_entry_color(vga_color_t fg, vga_color_t bg)
 {
@@ -79,14 +81,14 @@ void vga_puts(const char *data)
     vga_write(data, strlen(data));
 }
 
-void vga_init(size_t r, size_t c)
+void vga_init()
 {
-    VGA_HEIGHT = r;
-    VGA_WIDTH = c;
+    // Set cursor position
     vga_row = 0;
     vga_col = 0;
+
+    // Set text color
     vga_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    vga_buffer = (void*) 0xB8000;
 
     // Clear screen
     for (size_t y = 0; y < VGA_HEIGHT; y++) {

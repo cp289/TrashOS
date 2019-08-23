@@ -11,21 +11,27 @@ CC=$(MARCH)-elf-gcc
 AS=$(MARCH)-elf-as
 LD=$(MARCH)-elf-ld
 
+DEBUG=-g0
 OPT=-O3 -pipe -flto=jobserver
 WARN=-pedantic -Wall -Wextra -Werror
 ASFLAGS=-march=$(MARCH)
-CFLAGS=-std=gnu18 -ffreestanding $(OPT) $(WARN)
-LDFLAGS=-ffreestanding -nostdlib $(OPT) $(WARN) -lgcc
+CFLAGS=-std=gnu18 -ffreestanding $(DEBUG) $(OPT) $(WARN)
+LDFLAGS=-ffreestanding -nostdlib $(DEBUG) $(OPT) $(WARN) -lgcc
 
 KOBJS=\
 	$(ARCHDIR)/boot.o \
+	$(ARCHDIR)/gdt.o \
+	$(ARCHDIR)/gdt_load.o \
 	$(ARCHDIR)/kernel.o \
 	$(ARCHDIR)/multiboot2.o \
+	$(ARCHDIR)/register.o \
 	$(ARCHDIR)/vga.o \
 
 KHDRS=\
+	$(ARCHDIR)/gdt.h \
 	$(ARCHDIR)/io.h \
 	$(ARCHDIR)/math.h \
+	$(ARCHDIR)/register.h \
 	$(ARCHDIR)/string.h \
 	$(ARCHDIR)/vga.h \
 
@@ -42,6 +48,7 @@ ISO=$(NAME).iso
 all: $(ISO)
 
 # Header file prerequisites
+$(ARCHDIR)/gdt.o: $(KHDRS)
 $(ARCHDIR)/kernel.o: $(KHDRS)
 $(ARCHDIR)/vga.o: $(KHDRS)
 

@@ -28,7 +28,7 @@ typedef enum
     VGA_COLOR_WHITE,
 } vga_color_t;
 
-void vga_init(size_t r, size_t c);
+void vga_init(void);
 void vga_putc(char c);
 void vga_puts(const char *data);
 void vga_write(const char *data, size_t size);
