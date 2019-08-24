@@ -7,8 +7,8 @@ dump_cs:
     mov %cs,    %eax
     ret
 
-.global dump_cs
-.type dump_cs, @function
+.global dump_ds
+.type dump_ds, @function
 dump_ds:
     mov %ds,    %eax
     ret
