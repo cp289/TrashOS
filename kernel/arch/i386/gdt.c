@@ -4,10 +4,8 @@
  * For documentation, see: Intel Software Development Manual 3A 3-9
  */
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include "gdt.h"
+#include "std.h"
 
 // Global Descriptor Table
 extern gdt_t GDT[5];

@@ -8,7 +8,7 @@
 #ifndef _KERNEL_REGISTER_H
 #define _KERNEL_REGISTER_H
 
-#include <stdint.h>
+#include "std.h"
 
 // Dump segment registers
 uint16_t dump_cs(void);

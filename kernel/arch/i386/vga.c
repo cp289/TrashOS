@@ -4,9 +4,7 @@
  * For documentation, see: http://www.osdever.net/FreeVGA/vga/vga.htm
  */
 
-#include <stddef.h>
-#include <stdint.h>
-
+#include "std.h"
 #include "string.h"
 #include "vga.h"
 

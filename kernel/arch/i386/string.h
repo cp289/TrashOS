@@ -10,6 +10,8 @@
 #ifndef _KERNEL_STRING_H
 #define _KERNEL_STRING_H
 
+#include "std.h"
+
 static size_t strlen(const char* str)
 {
     size_t len = 0;

@@ -5,6 +5,8 @@
 #ifndef _KERNEL_VGA_H
 #define _KERNEL_VGA_H
 
+#include "std.h"
+
 /**
  * Hardware text mode color constants
  */

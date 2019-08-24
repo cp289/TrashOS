@@ -14,6 +14,7 @@
 #define _KERNEL_IO_H
 
 #include "math.h"
+#include "std.h"
 /**
  * TODO ideally we put characters to a general buffer instead of relying on VGA.
  *   1) Write stream/buffer protocol (look at C++ streambuf protocol?)
