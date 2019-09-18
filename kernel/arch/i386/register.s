@@ -1,6 +1,17 @@
 ## dump.s: dump register values
 # TODO convert this file to inline C functions with inline assembler
 
+.section .text
+
+# TODO fix this
+.global dump_eflags
+.type dump_eflags, @function
+dump_eflags:
+    //mov %eflags,   %eax
+    ret
+
+# Segment registers
+
 .global dump_cs
 .type dump_cs, @function
 dump_cs:
