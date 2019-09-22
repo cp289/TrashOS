@@ -43,6 +43,12 @@ static void vga_scrolldown(size_t lines)
             vga_buffer[to_index] = vga_buffer[from_index];
         }
     }
+    for (size_t y = VGA_HEIGHT - lines; y < VGA_HEIGHT; y++) {
+        for (size_t x = 0; x < VGA_WIDTH; x++) {
+            vga_buffer[y * VGA_WIDTH + x] = ' ';
+        }
+    }
+    vga_row -= lines;
 }
 
 static inline void vga_linebreak(void)
