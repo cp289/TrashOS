@@ -21,3 +21,20 @@ idtr_load: # (void *base, uint16_t limit)
     movw    %ax,        idt
     lidt    idt
     ret
+
+.global catch_interrupt
+.type catch_interrupt, @function
+catch_interrupt:
+    # TODO is it necessary to clear interrupts? x86 might do this automatically
+    cli
+
+    # This pseudo instruction preserves important registers by pushing them to
+    # the stack
+    pusha
+
+    call    handle_interrupt_noerr
+
+    popa
+
+    sti
+    iret

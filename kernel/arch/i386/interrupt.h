@@ -26,13 +26,13 @@ typedef struct
 {
     uint16_t offset_1;  // Offset 15:0
     uint16_t selector;  // Code segment selector
-    uint8_t _pad;
-    uint8_t flags;      // Type and attribute flags
+    uint16_t flags;     // Type and attribute flags
     uint16_t offset_2;  // Offset 31:16
 } idt_descriptor_t;
 
 extern char *interrupt_description[];
 
+void catch_interrupt(void);
 void idtr_load(void *base, uint16_t limit);
 void idt_init(void);
 
