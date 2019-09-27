@@ -47,6 +47,7 @@ char *interrupt_description[] = {
 static idt_descriptor_t idt[IDT_SIZE];
 
 // Initialize new IDT gate
+// TODO initialize interrupts and exceptions differently
 static void new_idt_gate(idt_descriptor_t *descr, void (*offset)(void), uint16_t flags)
 {
     uintptr_t off = (uintptr_t)offset;
@@ -67,21 +68,56 @@ static void new_idt_gate(idt_descriptor_t *descr, void (*offset)(void), uint16_t
 /**
  * NOTE: According to the Intel Software Developer's Manual, vol. 3, section
  * 6.12.1, the stack has EFLAGS, CS, EIP, and (sometimes) an Error Code pushed
- * to the stack. Given that function parameters are pushed to the stack in
- * reverse order in the cdecl calling convention, we can simply access these
- * values from function parameters.
+ * to the stack. In the case no error code is pushed, we call the interrupt
+ * handler, whereas if an error code is pushed, we call the exception handler.
+ *
+ * Given that function parameters are pushed to the stack in reverse order in
+ * the cdecl calling convention, we can access these values as function
+ * parameters. Since all registers must be saved before calling C handler
+ * functions, we pass everything via a structure (see intr_context_t and
+ * exce_context_t below). The assembly routines catch_interrupt() and
+ * catch_exception() take care of ensuring the stack is set up properly.
  */
 
-// Handle an interrupt with no error code
-void handle_interrupt_noerr(uintptr_t sp, uintptr_t ip, uint32_t cs, uint32_t flags)
+// Context for interrupt handlers
+typedef struct
 {
-    kprintf("Lmao: sp: %p, ip: %p, cs: %p, flags: %p\n", sp, ip, cs, flags);
+    uint32_t    edi;
+    uint32_t    esi;
+    uint32_t    ebx;
+    uint32_t    edx;
+    uint32_t    ecx;
+    uint32_t    eax;
+    uint32_t    eip;
+    uint32_t    cs;
+    uint32_t    eflags;
+} intr_context_t;
+
+// Context for exception handlers
+typedef struct
+{
+    uint32_t    edi;
+    uint32_t    esi;
+    uint32_t    ebx;
+    uint32_t    edx;
+    uint32_t    ecx;
+    uint32_t    eax;
+    uint32_t    error_code;
+    uint32_t    eip;
+    uint32_t    cs;
+    uint32_t    eflags;
+} exce_context_t;
+
+// Handle an interrupt
+void handle_interrupt(intr_context_t ctxt)
+{
+    kprintf("Lmao: ip: %p, cs: %p, flags: %p\n", ctxt.eip, ctxt.cs, ctxt.eflags);
 }
 
-// Handle an interrupt with an error code
-void handle_interrupt_err(uintptr_t sp, uint32_t error, uintptr_t ip, uint32_t cs, uint32_t flags)
+// Handle an exception
+void handle_exception(exce_context_t ctxt)
 {
-    kprintf("Lmao: sp: %p, error: %p, ip: %p, cs: %p, flags: %p\n", sp, error, ip, cs, flags);
+    kprintf("Lmao: error: %p, ip: %p, cs: %p, flags: %p\n", ctxt.error_code, ctxt.eip, ctxt.cs, ctxt.eflags);
 }
 
 void idt_init(void)
