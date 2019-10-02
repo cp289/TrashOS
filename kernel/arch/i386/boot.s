@@ -14,9 +14,6 @@ _start:
     # Setup stack
     mov $stack_top, %esp
 
-    # Setup paging
-    #call page_init
-
     # Begin kernel
     call kernel_main
 
