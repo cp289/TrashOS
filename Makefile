@@ -20,26 +20,23 @@ LDFLAGS=-ffreestanding -nostdlib $(DEBUG) $(OPT) $(WARN) -lgcc
 
 KOBJS=\
 	$(ARCHDIR)/boot.o \
-	$(ARCHDIR)/cr.o \
 	$(ARCHDIR)/gdt.o \
 	$(ARCHDIR)/gdt_load.o \
 	$(ARCHDIR)/interrupt.o \
-	$(ARCHDIR)/interrupt_asm.o \
 	$(ARCHDIR)/kernel.o \
 	$(ARCHDIR)/kprintf.o \
 	$(ARCHDIR)/multiboot2.o \
 	$(ARCHDIR)/page.o \
 	$(ARCHDIR)/page_load.o \
-	$(ARCHDIR)/register.o \
 	$(ARCHDIR)/vga.o \
 
 KHDRS=\
+	$(ARCHDIR)/asm.h \
 	$(ARCHDIR)/gdt.h \
 	$(ARCHDIR)/interrupt.h \
 	$(ARCHDIR)/io.h \
 	$(ARCHDIR)/math.h \
 	$(ARCHDIR)/page.h \
-	$(ARCHDIR)/register.h \
 	$(ARCHDIR)/string.h \
 	$(ARCHDIR)/vga.h \
 
@@ -57,10 +54,15 @@ all: $(ISO)
 
 # Header file prerequisites
 $(ARCHDIR)/gdt.o: $(KHDRS)
-$(ARCHDIR)/page.o: $(KHDRS)
+$(ARCHDIR)/interrupt.o: $(KHDRS)
 $(ARCHDIR)/kernel.o: $(KHDRS)
 $(ARCHDIR)/kprintf.o: $(KHDRS)
+$(ARCHDIR)/page.o: $(KHDRS)
 $(ARCHDIR)/vga.o: $(KHDRS)
+
+# Special rule for compiling interrupt handlers
+$(ARCHDIR)/interrupt.o: $(ARCHDIR)/interrupt.c
+	$(CC) -c $< -o $@ $(CPPFLAGS) $(CFLAGS) -mgeneral-regs-only
 
 $(KERNEL): $(KERNEL).ld $(KOBJS)
 

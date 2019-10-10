@@ -2,11 +2,12 @@
  * interrupt.c: Interrrupts
  */
 
+#include "asm.h"
 #include "interrupt.h"
 #include "io.h"
-#include "register.h"
 
-// Interrupt description string table
+static idt_descriptor_t idt[IDT_SIZE];
+
 char *interrupt_description[] = {
     "Divide Error",
     "Debug Exception",
@@ -42,13 +43,21 @@ char *interrupt_description[] = {
     "Intel Reserved (31)",
 };
 
-#define IDT_SIZE    256
+// Handle an interrupt
+INTERRUPT handle_interrupt(interrupt_frame_t *ctxt)
+{
+    kprintf("INT: IP: %p CS: %p FLAGS: %p\n", ctxt->ip, ctxt->cs, ctxt->flags);
+}
 
-static idt_descriptor_t idt[IDT_SIZE];
+// Handle an exception
+INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
+{
+    kprintf("EXC: IP: %p CS: %p FLAGS: %p ERROR: %u\n", ctxt->ip, ctxt->cs,
+            ctxt->flags, error_code);
+}
 
 // Initialize new IDT gate
-// TODO initialize interrupts and exceptions differently
-static void new_idt_gate(idt_descriptor_t *descr, void (*offset)(void), uint16_t flags)
+static void new_idt_gate(idt_descriptor_t *descr, void (*offset)(), uint16_t flags)
 {
     uintptr_t off = (uintptr_t)offset;
 
@@ -57,76 +66,51 @@ static void new_idt_gate(idt_descriptor_t *descr, void (*offset)(void), uint16_t
     // Are segment ring levels the only way to provide security in this case?
 
     /**
-     * TODO currently, we simply use the current (privelege 0) code selector for
+     * TODO currently, we simply use the current (privilege 0) code selector for
      * all interrupt gates. This may not be desirable.
      */
-    descr->selector = dump_cs();
+    descr->selector = get_cs();
     descr->flags = flags;
     descr->offset_2 = off >> 16;
-}
-
-/**
- * NOTE: According to the Intel Software Developer's Manual, vol. 3, section
- * 6.12.1, the stack has EFLAGS, CS, EIP, and (sometimes) an Error Code pushed
- * to the stack. In the case no error code is pushed, we call the interrupt
- * handler, whereas if an error code is pushed, we call the exception handler.
- *
- * Given that function parameters are pushed to the stack in reverse order in
- * the cdecl calling convention, we can access these values as function
- * parameters. Since all registers must be saved before calling C handler
- * functions, we pass everything via a structure (see intr_context_t and
- * exce_context_t below). The assembly routines catch_interrupt() and
- * catch_exception() take care of ensuring the stack is set up properly.
- */
-
-// Context for interrupt handlers
-typedef struct
-{
-    uint32_t    edi;
-    uint32_t    esi;
-    uint32_t    ebx;
-    uint32_t    edx;
-    uint32_t    ecx;
-    uint32_t    eax;
-    uint32_t    eip;
-    uint32_t    cs;
-    uint32_t    eflags;
-} intr_context_t;
-
-// Context for exception handlers
-typedef struct
-{
-    uint32_t    edi;
-    uint32_t    esi;
-    uint32_t    ebx;
-    uint32_t    edx;
-    uint32_t    ecx;
-    uint32_t    eax;
-    uint32_t    error_code;
-    uint32_t    eip;
-    uint32_t    cs;
-    uint32_t    eflags;
-} exce_context_t;
-
-// Handle an interrupt
-void handle_interrupt(intr_context_t ctxt)
-{
-    kprintf("Lmao: ip: %p, cs: %p, flags: %p\n", ctxt.eip, ctxt.cs, ctxt.eflags);
-}
-
-// Handle an exception
-void handle_exception(exce_context_t ctxt)
-{
-    kprintf("Lmao: error: %p, ip: %p, cs: %p, flags: %p\n", ctxt.error_code, ctxt.eip, ctxt.cs, ctxt.eflags);
 }
 
 void idt_init(void)
 {
     // Initialize IDT
     for (int i = 0; i < IDT_SIZE; i++) {
-        new_idt_gate(idt + i, &catch_interrupt, IDT_INTR_GATE32 | IDT_SEG_PRESENT | IDT_DPL(0));
+        switch (i) {
+            case 8: case 10: case 11: case 12: case 13: case 14: case 17:
+                new_idt_gate(idt + i, &handle_exception,
+                        IDT_INTR_GATE32 | IDT_SEG_PRESENT | IDT_DPL(0));
+                break;
+            default:
+                new_idt_gate(idt + i, &handle_interrupt,
+                        IDT_INTR_GATE32 | IDT_SEG_PRESENT | IDT_DPL(0));
+        }
     }
 
     // Set IDTR register
-    idtr_load(&idt, (sizeof idt) - 1);
+
+    // IDTR Register:
+    //  bits 47:16  IDT base address
+    //  bits 15:0   IDT limit (byte size of IDT)
+
+    asm (
+        ".section .data\n"
+
+        ".align 8\n"
+        "idtr:\n\t"
+        ".word 0\n\t"
+        ".long 0\n"
+
+        ".section .text\n"
+
+        "movl    %[idtr_addr], idtr+2\n\t"
+        "movw    %[idtr_size], idtr\n\t"
+        "lidt    idtr\n\t"
+        : // No outputs
+        :   [idtr_addr] "rm" (&idt),
+            [idtr_size] "rm" ((uint16_t)(sizeof idt) - 1)
+        : // No clobbers
+    );
 }

@@ -9,6 +9,10 @@
 
 #include "std.h"
 
+enum {
+    IDT_SIZE = 256,
+};
+
 // Interrupt descriptor flag constants
 enum {
     IDT_TASK_GATE32 = 0x0500,   // 32-bit task gate type
@@ -22,6 +26,26 @@ enum {
 // Descriptor privelege level
 #define IDT_DPL(x)  ((x) << 13)
 
+/**
+ * NOTE: According to the Intel Software Developer's Manual, vol. 3, section
+ * 6.12.1, the stack has EFLAGS, CS, EIP, and (sometimes) an Error Code pushed
+ * to the stack. In the case no error code is pushed, we call the interrupt
+ * handler, whereas if an error code is pushed, we call the exception handler.
+ *
+ * We use GCC's `interrupt` function attributes to declare interrupt handlers
+ * without the need for assembly.
+ */
+
+// Function declaration for interrupt and exception handlers
+#define INTERRUPT __attribute__((interrupt)) void
+
+typedef struct
+{
+    uintptr_t ip;
+    uintptr_t cs;
+    uintptr_t flags;
+} interrupt_frame_t;
+
 typedef struct
 {
     uint16_t offset_1;  // Offset 15:0
@@ -30,10 +54,9 @@ typedef struct
     uint16_t offset_2;  // Offset 31:16
 } idt_descriptor_t;
 
+// Interrupt description string table
 extern char *interrupt_description[];
 
-void catch_interrupt(void);
-void idtr_load(void *base, uint16_t limit);
 void idt_init(void);
 
 #endif // _KERNEL_INTERRUPT_H
