@@ -3,6 +3,7 @@
  */
 
 #include "asm.h"
+#include "cpuid.h"
 #include "gdt.h"
 #include "interrupt.h"
 #include "io.h"
@@ -27,8 +28,13 @@ void kernel_main(void)
     idt_init();
     page_init();
 
-    volatile int x = 0;
-    kprintf("Division by zero: %d\n", 2/x);
+    //volatile int x = 0;
+    //kprintf("Division by zero: %d\n", 2/x);
+
+    char id_str[3 * sizeof(reg_t) + 1];
+    cpuid_id_string(id_str);
+
+    kprintf("CPUID: %s\n", id_str);
 
     kprintf("CR0: %p\n", get_cr0());
     kprintf("CR2: %p\n", get_cr2());

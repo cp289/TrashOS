@@ -32,6 +32,7 @@ KOBJS=\
 
 KHDRS=\
 	$(ARCHDIR)/asm.h \
+	$(ARCHDIR)/cpuid.h \
 	$(ARCHDIR)/gdt.h \
 	$(ARCHDIR)/interrupt.h \
 	$(ARCHDIR)/io.h \
