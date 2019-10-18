@@ -95,6 +95,10 @@ void idt_init(void)
     //  bits 47:16  IDT base address
     //  bits 15:0   IDT limit (byte size of IDT)
 
+    // TODO Here we define variables directly in the data section. We should
+    // instead define this as an (extern?) uint64_t variable in C. Outside of
+    // cleaner code, it is unclear if there is any performance benefit to doing
+    // so, perhaps more effective Link Time Optimization?
     asm (
         ".section .data\n"
 
