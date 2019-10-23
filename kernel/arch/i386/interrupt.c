@@ -114,7 +114,7 @@ void idt_init(void)
         "lidt    idtr\n\t"
         : // No outputs
         :   [idtr_addr] "rm" (&idt),
-            [idtr_size] "rm" ((uint16_t)(sizeof idt) - 1)
+            [idtr_size] "rm" ((uint16_t)(sizeof idt - 1))
         : // No clobbers
     );
 }
