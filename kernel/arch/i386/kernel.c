@@ -46,4 +46,6 @@ void kernel_main(void)
     kprintf("FS:  %p\n", get_fs());
     kprintf("GS:  %p\n", get_gs());
     kprintf("SS:  %p\n", get_ss());
+
+    die();
 }
