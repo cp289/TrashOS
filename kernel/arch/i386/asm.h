@@ -17,7 +17,6 @@ static inline void die(void)
     "1:  hlt\n\t"
         // Jump to halt if non-maskable interrupt or system management mode occurs
         "jmp 1b\n\t"
-        "hlt\n\t"
         : // No outputs
         : // No inputs
         : // No clobbers
