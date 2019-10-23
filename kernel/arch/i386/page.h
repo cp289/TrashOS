@@ -78,8 +78,27 @@
 typedef uintptr_t page_table_t[1024];
 typedef uintptr_t page_dir_t[1024];
 
+static inline void page_load_dir(void *page_dir)
+{
+    asm (
+        "movl   %0,  %%cr3\n\t"
+        : // No outputs
+        : "rm" (page_dir)
+    );
+}
+
+static inline void page_enable(void)
+{
+    asm (
+        "movl   %%cr0,  %%eax\n\t"
+        "orl    %0,     %%eax\n\t"
+        "movl   %%eax,  %%cr0\n\t"
+        : // No outputs
+        : "i" (0x80000001)
+        : "eax"
+    );
+}
+
 void page_init(void);
-void page_load_dir(void *page_dir);
-void page_enable(void);
 
 #endif // _KERNEL_PAGE_H

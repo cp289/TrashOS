@@ -26,7 +26,6 @@ KOBJS=\
 	$(ARCHDIR)/kprintf.o \
 	$(ARCHDIR)/multiboot2.o \
 	$(ARCHDIR)/page.o \
-	$(ARCHDIR)/page_load.o \
 	$(ARCHDIR)/vga.o \
 
 KHDRS=\
