@@ -21,7 +21,6 @@ LDFLAGS=-ffreestanding -nostdlib $(DEBUG) $(OPT) $(WARN) -lgcc
 KOBJS=\
 	$(ARCHDIR)/boot.o \
 	$(ARCHDIR)/gdt.o \
-	$(ARCHDIR)/gdt_load.o \
 	$(ARCHDIR)/interrupt.o \
 	$(ARCHDIR)/kernel.o \
 	$(ARCHDIR)/kprintf.o \
