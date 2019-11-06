@@ -8,6 +8,8 @@
 
 static idt_descriptor_t idt[IDT_SIZE];
 
+static uint64_t idtr;
+
 char *interrupt_description[] = {
     "Divide Error",
     "Debug Exception",
@@ -56,12 +58,10 @@ INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
             ctxt->flags, error_code);
 }
 
-// Initialize new IDT gate
-static void new_idt_gate(idt_descriptor_t *descr, void (*offset)(), uint16_t flags)
+void idt_init(void)
 {
-    uintptr_t off = (uintptr_t)offset;
+    // Initialize IDT
 
-    descr->offset_1 = off & 0xffff;
     // TODO Make segment selectors available as constants in a header file
     // Are segment ring levels the only way to provide security in this case?
 
@@ -69,23 +69,27 @@ static void new_idt_gate(idt_descriptor_t *descr, void (*offset)(), uint16_t fla
      * TODO currently, we simply use the current (privilege 0) code selector for
      * all interrupt gates. This may not be desirable.
      */
-    descr->selector = get_cs();
-    descr->flags = flags;
-    descr->offset_2 = off >> 16;
-}
-
-void idt_init(void)
-{
-    // Initialize IDT
     for (int i = 0; i < IDT_SIZE; i++) {
         switch (i) {
             case 8: case 10: case 11: case 12: case 13: case 14: case 17:
-                new_idt_gate(idt + i, &handle_exception,
-                        IDT_INTR_GATE32 | IDT_SEG_PRESENT | IDT_DPL(0));
+                idt[i] = (idt_descriptor_t){
+                    .offset_lo = (uintptr_t)(&handle_exception) & 0xffff,
+                    .offset_hi = (uintptr_t)(&handle_exception) >> 16,
+                    .selector = get_cs(),
+                    .type = IDT_GATE_INTERRUPT32,
+                    .dpl = 0,
+                    .present = 1,
+                };
                 break;
             default:
-                new_idt_gate(idt + i, &handle_interrupt,
-                        IDT_INTR_GATE32 | IDT_SEG_PRESENT | IDT_DPL(0));
+                idt[i] = (idt_descriptor_t){
+                    .offset_lo = (uintptr_t)(&handle_interrupt) & 0xffff,
+                    .offset_hi = (uintptr_t)(&handle_interrupt) >> 16,
+                    .selector = get_cs(),
+                    .type = IDT_GATE_INTERRUPT32,
+                    .dpl = 0,
+                    .present = 1,
+                };
         }
     }
 
@@ -95,26 +99,12 @@ void idt_init(void)
     //  bits 47:16  IDT base address
     //  bits 15:0   IDT limit (byte size of IDT)
 
-    // TODO Here we define variables directly in the data section. We should
-    // instead define this as an (extern?) uint64_t variable in C. Outside of
-    // cleaner code, it is unclear if there is any performance benefit to doing
-    // so, perhaps more effective Link Time Optimization?
+    idtr = ((uint64_t)(uintptr_t)idt << 16) | (sizeof idt - 1);
+
     asm (
-        ".section .data\n"
-
-        ".align 8\n"
-        "idtr:\n\t"
-        ".word 0\n\t"
-        ".long 0\n"
-
-        ".section .text\n"
-
-        "movl    %[idtr_addr], idtr+2\n\t"
-        "movw    %[idtr_size], idtr\n\t"
-        "lidt    idtr\n\t"
+        "lidt    (%0)\n\t"
         : // No outputs
-        :   [idtr_addr] "rm" (&idt),
-            [idtr_size] "rm" ((uint16_t)(sizeof idt - 1))
+        : "rm" (&idtr)
         : // No clobbers
     );
 }

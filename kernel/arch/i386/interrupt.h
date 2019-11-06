@@ -13,18 +13,14 @@ enum {
     IDT_SIZE = 256,
 };
 
-// Interrupt descriptor flag constants
+// Interrupt descriptor type constants
 enum {
-    IDT_TASK_GATE32 = 0x0500,   // 32-bit task gate type
-    IDT_INTR_GATE16 = 0x0600,   // 16-bit interrupt gate type
-    IDT_TRAP_GATE16 = 0x0700,   // 16-bit trap gate type
-    IDT_INTR_GATE32 = 0x0e00,   // 32-bit interrupt gate type
-    IDT_TRAP_GATE32 = 0x0f00,   // 32-bit trap gate type
-    IDT_SEG_PRESENT = 0x8000,   // Segment present flag
+    IDT_GATE_TASK           = 0x28, // (32-bit) task gate type
+    IDT_GATE_INTERRUPT16    = 0x30, // 16-bit interrupt gate type
+    IDT_GATE_INTERRUPT32    = 0x70, // 32-bit interrupt gate type
+    IDT_GATE_TRAP16         = 0x38, // 16-bit trap gate type
+    IDT_GATE_TRAP32         = 0x78, // 32-bit trap gate type
 };
-
-// Descriptor privelege level
-#define IDT_DPL(x)  ((x) << 13)
 
 /**
  * NOTE: According to the Intel Software Developer's Manual, vol. 3, section
@@ -48,10 +44,13 @@ typedef struct
 
 typedef struct
 {
-    uint16_t offset_1;  // Offset 15:0
-    uint16_t selector;  // Code segment selector
-    uint16_t flags;     // Type and attribute flags
-    uint16_t offset_2;  // Offset 31:16
+    uint64_t offset_lo  : 16;   // Offset 15:0
+    uint64_t selector   : 16;   // Code segment selector
+    uint64_t _reserved0 : 5;
+    uint64_t type       : 8;    // Gate type
+    uint64_t dpl        : 2;    // Destination privelege level
+    uint64_t present    : 1;    // Segment present flag
+    uint64_t offset_hi  : 16;   // Offset 31:16
 } idt_descriptor_t;
 
 // Interrupt description string table
