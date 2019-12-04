@@ -7,6 +7,35 @@
 
 #include "std.h"
 
+// Flags register
+typedef union {
+    struct {
+        uint32_t cf         : 1; // ??
+        uint32_t _reserved0 : 1; // Always set to 1
+        uint32_t pf         : 1; // ??
+        uint32_t _reserved1 : 1; // Always set to 0
+        uint32_t af         : 1; // ??
+        uint32_t _reserved2 : 1; // Always set to 0
+        uint32_t zf         : 1; // ??
+        uint32_t sf         : 1; // ??
+        uint32_t tf         : 1; // Trap flag
+        uint32_t ief        : 1; // Interrupt enable flag
+        uint32_t df         : 1; // ??
+        uint32_t of         : 1; // ??
+        uint32_t iopl       : 2; // I/O Privelege Level
+        uint32_t nt         : 1; // Nested task flag
+        uint32_t _reserved3 : 1; // Always 1
+        uint32_t rf         : 1; // Resume flag
+        uint32_t vm         : 1; // Virtual-8086 mode
+        uint32_t ac         : 1; // Alignment check / Access control
+        uint32_t vif        : 1; // Virtual interrupt flag
+        uint32_t vip        : 1; // Virtual interrupt pending
+        uint32_t id         : 1; // Identification flag
+        uint32_t _reserved4 : 10;// Always zero
+    } field;
+    uint32_t raw;
+} flags_reg_t;
+
 static inline void die(void)
 {
     // Place system into infinite loop
@@ -21,6 +50,23 @@ static inline void die(void)
         : // No inputs
         : // No clobbers
     );
+}
+
+static inline void halt(void)
+{
+    asm ("hlt\n\t");
+}
+
+// Clear interrupt enable flag
+static inline void cli(void)
+{
+    asm ("cli\n\t");
+}
+
+// Set interrupt enable flag
+static inline void sti(void)
+{
+    asm ("sti\n\t");
 }
 
 static inline reg_t get_cr0(void)
@@ -84,10 +130,17 @@ static inline reg_t get_cr4(void)
     return val;
 }
 
-// TODO fix this
-static inline reg_t get_eflags(void)
+static inline flags_reg_t get_flags(void)
 {
-    return 0;
+    flags_reg_t out;
+    asm volatile (
+        "pushf\n\t"
+        "pop %0\n\t"
+        : "=g" (out.raw)
+        : // No inputs
+        : // No clobbers
+    );
+    return out;
 }
 
 // Segment registers
@@ -162,6 +215,39 @@ static inline reg_t get_ss(void)
         : // No clobbers
     );
     return val;
+}
+
+// MSR
+
+static inline void get_msr(void *val, uint32_t msr)
+{
+    uint32_t edx;
+    asm (
+        "movl   %[msr], %%ecx\n\t"
+        "rdmsr\n\t"
+        "movl   %%eax,  %[lo]\n\t"
+        "movl   %%edx,  %[hi]\n\t"
+        : [hi]  "=rm" (edx),
+          [lo]  "=rm" (*(uint32_t*)val)
+        : [msr] "rm" (msr)
+        : "eax", "ecx", "edx"
+    );
+    *(uint64_t*)val |= ((uint64_t)edx << 32);
+}
+
+static inline void set_msr(uint64_t val, uint32_t msr)
+{
+    asm (
+        "movl   %[msr], %%ecx\n\t"
+        "movl   %[lo],  %%eax\n\t"
+        "movl   %[hi],  %%edx\n\t"
+        "wrmsr\n\t"
+        : // No outputs
+        : [msr] "rm" (msr),
+          [lo]  "rm" ((uint32_t)val),
+          [hi]  "rm" ((uint32_t)(val >> 32))
+        : "eax", "ecx", "edx"
+    );
 }
 
 #endif // _KERNEL_ASM_H

@@ -2,6 +2,7 @@
  * interrupt.c: Interrrupts
  */
 
+#include "apic.h"
 #include "asm.h"
 #include "interrupt.h"
 #include "io.h"
@@ -10,7 +11,9 @@ static idt_descriptor_t idt[IDT_SIZE];
 
 static uint64_t idtr;
 
-char *interrupt_description[] = {
+// TODO Is this string table necessary? Interrupt vectors numbers don't seem to
+// be accessible in code.
+char *interrupt_string[] = {
     "Divide Error",
     "Debug Exception",
     "NMI Interrupt",
@@ -45,22 +48,37 @@ char *interrupt_description[] = {
     "Intel Reserved (31)",
 };
 
-// Handle an interrupt
+// TODO Define an handler for each of the above architecture-defined interrupts
+
+// Handle generic interrupt
 INTERRUPT handle_interrupt(interrupt_frame_t *ctxt)
 {
     kprintf("INT: IP: %p CS: %p FLAGS: %p\n", ctxt->ip, ctxt->cs, ctxt->flags);
 }
 
-// Handle an exception
+// Handle generic exception (has error code)
 INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
 {
     kprintf("EXC: IP: %p CS: %p FLAGS: %p ERROR: %u\n", ctxt->ip, ctxt->cs,
             ctxt->flags, error_code);
 }
 
-void idt_init(void)
+// TODO call scheduling routine
+INTERRUPT handle_lapic_timer(volatile interrupt_frame_t *frame)
 {
-    // Initialize IDT
+    (void)frame;
+    kprintf("T");
+    lapic_eoi();
+}
+
+INTERRUPT handle_unknown(interrupt_frame_t *frame)
+{
+    kprintf("UNKNOWN INTERRUPT! %p", frame);
+}
+
+static void idt_init_default(void)
+{
+    // Initialize IDT with default handlers
 
     // TODO Make segment selectors available as constants in a header file
     // Are segment ring levels the only way to provide security in this case?
@@ -69,10 +87,11 @@ void idt_init(void)
      * TODO currently, we simply use the current (privilege 0) code selector for
      * all interrupt gates. This may not be desirable.
      */
+    // TODO change DPL values to constants?
     for (int i = 0; i < IDT_SIZE; i++) {
         switch (i) {
             case 8: case 10: case 11: case 12: case 13: case 14: case 17:
-                idt[i] = (idt_descriptor_t){
+                idt[i] = (idt_descriptor_t) {
                     .offset_lo = (uintptr_t)(&handle_exception) & 0xffff,
                     .offset_hi = (uintptr_t)(&handle_exception) >> 16,
                     .selector = get_cs(),
@@ -82,7 +101,7 @@ void idt_init(void)
                 };
                 break;
             default:
-                idt[i] = (idt_descriptor_t){
+                idt[i] = (idt_descriptor_t) {
                     .offset_lo = (uintptr_t)(&handle_interrupt) & 0xffff,
                     .offset_hi = (uintptr_t)(&handle_interrupt) >> 16,
                     .selector = get_cs(),
@@ -92,7 +111,24 @@ void idt_init(void)
                 };
         }
     }
+}
 
+// Setup timing interrupts
+static void idt_init_lapic_timer(void)
+{
+    idt[IDT_VECTOR_TIMER] = (idt_descriptor_t) {
+        .offset_lo = (uintptr_t)(&handle_lapic_timer) & 0xffff,
+        .offset_hi = (uintptr_t)(&handle_lapic_timer) >> 16,
+        .selector = get_cs(),
+        .type = IDT_GATE_INTERRUPT32,
+        .dpl = 0,
+        .present = 1,
+    };
+}
+
+// Tell processor where IDT is
+static inline void idt_load(void)
+{
     // Set IDTR register
 
     // IDTR Register:
@@ -107,4 +143,11 @@ void idt_init(void)
         : "rm" (&idtr)
         : // No clobbers
     );
+}
+
+void idt_init(void)
+{
+    idt_init_default();
+    idt_init_lapic_timer();
+    idt_load();
 }

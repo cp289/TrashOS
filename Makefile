@@ -19,6 +19,7 @@ CFLAGS=-std=gnu18 -ffreestanding $(DEBUG) $(OPT) $(WARN)
 LDFLAGS=-ffreestanding -nostdlib $(DEBUG) $(OPT) $(WARN) -lgcc
 
 KOBJS=\
+	$(ARCHDIR)/apic.o \
 	$(ARCHDIR)/boot.o \
 	$(ARCHDIR)/gdt.o \
 	$(ARCHDIR)/interrupt.o \
@@ -29,6 +30,7 @@ KOBJS=\
 	$(ARCHDIR)/vga.o \
 
 KHDRS=\
+	$(ARCHDIR)/apic.h \
 	$(ARCHDIR)/asm.h \
 	$(ARCHDIR)/cpuid.h \
 	$(ARCHDIR)/gdt.h \
@@ -36,6 +38,7 @@ KHDRS=\
 	$(ARCHDIR)/io.h \
 	$(ARCHDIR)/math.h \
 	$(ARCHDIR)/page.h \
+	$(ARCHDIR)/std.h \
 	$(ARCHDIR)/string.h \
 	$(ARCHDIR)/vga.h \
 
@@ -52,6 +55,7 @@ ISO=$(NAME).iso
 all: $(ISO)
 
 # Header file prerequisites
+$(ARCHDIR)/apic.o: $(KHDRS)
 $(ARCHDIR)/gdt.o: $(KHDRS)
 $(ARCHDIR)/interrupt.o: $(KHDRS)
 $(ARCHDIR)/kernel.o: $(KHDRS)

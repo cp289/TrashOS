@@ -2,6 +2,7 @@
  * kernel.c: Main kernel file
  */
 
+#include "apic.h"
 #include "asm.h"
 #include "cpuid.h"
 #include "gdt.h"
@@ -23,29 +24,40 @@ void kernel_main(void)
      * NOTE: Interrupt gates require referencing memory descriptors, so the GDT
      * must be configured and loaded before the IDT
      */
-    gdt_init();
     vga_init();
+    // TODO uncomment
+    //page_init();
+    gdt_init();
     idt_init();
-    page_init();
+    apic_init();
 
-    //volatile int x = 0;
-    //kprintf("Division by zero: %d\n", 2/x);
+    // TODO call a scheduline routine that does something like this
+    sti();
+    while (1)
+        halt();
 
     char id_str[3 * sizeof(reg_t) + 1];
-    cpuid_id_string(id_str);
+    size_t max_size;
 
-    kprintf("CPUID: %s\n", id_str);
+    cpuid_id_string(&max_size, id_str);
+    kprintf("kernel_main: CPUID: %s %d\n", id_str, max_size);
 
-    kprintf("CR0: %p\n", get_cr0());
-    kprintf("CR2: %p\n", get_cr2());
-    kprintf("CR3: %p\n", get_cr3());
-    kprintf("CR4: %p\n", get_cr4());
-    kprintf("CS:  %p\n", get_cs());
-    kprintf("DS:  %p\n", get_ds());
-    kprintf("ES:  %p\n", get_es());
-    kprintf("FS:  %p\n", get_fs());
-    kprintf("GS:  %p\n", get_gs());
-    kprintf("SS:  %p\n", get_ss());
+    cpuid_version_t ver;
+    cpuid_version(&ver);
+    kprintf("kernel_main: APIC ID: %d\n", ver.initial_apic_id);
+
+    kprintf("kernel_main: CR0: %p\n", get_cr0());
+    kprintf("kernel_main: CR2: %p\n", get_cr2());
+    kprintf("kernel_main: CR3: %p\n", get_cr3());
+    kprintf("kernel_main: CR4: %p\n", get_cr4());
+    kprintf("kernel_main: CS:  %p\n", get_cs());
+    kprintf("kernel_main: DS:  %p\n", get_ds());
+    kprintf("kernel_main: ES:  %p\n", get_es());
+    kprintf("kernel_main: FS:  %p\n", get_fs());
+    kprintf("kernel_main: GS:  %p\n", get_gs());
+    kprintf("kernel_main: SS:  %p\n", get_ss());
+
+    kprintf("kernel_main: EXIT\n");
 
     die();
 }

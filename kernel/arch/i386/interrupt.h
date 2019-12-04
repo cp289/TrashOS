@@ -13,6 +13,11 @@ enum {
     IDT_SIZE = 256,
 };
 
+// IDT vector constants
+enum {
+    IDT_VECTOR_TIMER = 65,
+};
+
 // Interrupt descriptor type constants
 enum {
     IDT_GATE_TASK           = 0x28, // (32-bit) task gate type
