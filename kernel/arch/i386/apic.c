@@ -14,20 +14,20 @@ static void lapic_timer_init(uint32_t period)
 {
     apic_lvt_reg_t volatile *reg = lapic_base;
 
-    kprintf("lapic_timer_init: LAPIC base: %p\n", reg);
+    printk("lapic_timer_init: LAPIC base: %p\n", reg);
     apic_lvt_reg_t ver = reg[APIC_VER_IDX];
-    kprintf("lapic_timer_init: LAPIC version: %x, max lvt: %d\n", ver.ver.version, ver.ver.max_lvt_entry);
+    printk("lapic_timer_init: LAPIC version: %x, max lvt: %d\n", ver.ver.version, ver.ver.max_lvt_entry);
 
     cpuid_thermal_t thermal_info;
     cpuid_thermal(&thermal_info);
 
     if (!thermal_info.arat) {
-        kprintf("lapic_timer_init: WARNING: APIC timer is not persistent\n");
+        printk("lapic_timer_init: WARNING: APIC timer is not persistent\n");
     }
 
-    kprintf("lapic_timer_init: period: %u\n", period);
+    printk("lapic_timer_init: period: %u\n", period);
 
-    kprintf("lapic_timer_init: A TR: %p\n", reg[APIC_LVT_TR_IDX]);
+    printk("lapic_timer_init: A TR: %p\n", reg[APIC_LVT_TR_IDX]);
 
     apic_lvt_reg_t timer = {
         .lvt = {
@@ -37,12 +37,12 @@ static void lapic_timer_init(uint32_t period)
     };
     reg[APIC_LVT_TR_IDX] = timer;
 
-    kprintf("lapic_timer_init: B TR: %p\n", reg[APIC_LVT_TR_IDX]);
-    kprintf("lapic_timer_init: B TR.vector: %u\n", reg[APIC_LVT_TR_IDX].lvt.vector);
+    printk("lapic_timer_init: B TR: %p\n", reg[APIC_LVT_TR_IDX]);
+    printk("lapic_timer_init: B TR.vector: %u\n", reg[APIC_LVT_TR_IDX].lvt.vector);
 
     // Set divide configuration register
     reg[APIC_DIV_CONFIG_IDX].timer.divide = APIC_TIMER_DIV128;
-    kprintf("lapic_timer_init: Timer: %u, %u\n", reg[APIC_DIV_CONFIG_IDX].timer.divide, APIC_TIMER_DIV16);
+    printk("lapic_timer_init: Timer: %u, %u\n", reg[APIC_DIV_CONFIG_IDX].timer.divide, APIC_TIMER_DIV16);
 
     // Set initial-count register
     reg[APIC_INIT_COUNT_IDX].raw = period;
@@ -76,7 +76,7 @@ void lapic_eoi(void)
 void apic_init(void)
 {
     pic_disable();
-    kprintf("apic_init: PIC has been disabled\n");
+    printk("apic_init: PIC has been disabled\n");
 
     // TODO if the below checks fail, configure the legacy x86 PIC instead of
     // disabling it above
@@ -84,11 +84,11 @@ void apic_init(void)
     cpuid_version(&ver);
 
     if (!ver.apic) {
-        kprintf("apic_init: FATAL: No local APIC available\n");
+        printk("apic_init: FATAL: No local APIC available\n");
         die();
     }
     if (!ver.msr) {
-        kprintf("apic_init: FATAL: No MSRs available\n");
+        printk("apic_init: FATAL: No MSRs available\n");
         die();
     }
 
@@ -99,13 +99,13 @@ void apic_init(void)
     // TODO is this the right approach for an MP system? Do this earlier?
     // Halt processor if we are not on the bootstrap processor
     if (!msr.bsp) {
-        kprintf("apic_init: Halting core (not bootstrap)\n");
+        printk("apic_init: Halting core (not bootstrap)\n");
         halt();
     }
 
     lapic_base = (void*)((uintptr_t)msr.base << 12);
 
-    kprintf("apic_init: MSR: bsp: %d, enable: %d, base: %p\n", msr.bsp, msr.enable, msr.base << 12);
+    printk("apic_init: MSR: bsp: %d, enable: %d, base: %p\n", msr.bsp, msr.enable, msr.base << 12);
 
     lapic_timer_init(0x10000);
 }

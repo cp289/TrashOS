@@ -1,5 +1,5 @@
 /**
- * kprintf.c: kprintf function
+ * printk.c: printk function
  */
 
 #include "math.h"
@@ -110,7 +110,7 @@ static size_t _print_format(const char *format, size_t *i, va_list *arg)
     return bytes;
 }
 
-int kprintf(const char *format, ... )
+int printk(const char *format, ... )
 {
     va_list arg;            // Variable number of arguments
     va_start(arg, format);

@@ -8,7 +8,7 @@
 #include "std.h"
 
 /**
- * Kernel printf function
+ * Kernel print function
  * RETURN
  *  success: number of bytes written
  *  failure: negative error code
@@ -17,7 +17,7 @@
  * corresponding message in the string table. Determine whether a global string
  * table (for the entire kernel) or a local string table makes more sense.
  */
-int kprintf(const char *format, ... );
+int printk(const char *format, ... );
 
 static inline void outb(uint16_t port, uint8_t byte)
 {

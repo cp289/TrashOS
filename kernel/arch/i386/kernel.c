@@ -40,24 +40,24 @@ void kernel_main(void)
     size_t max_size;
 
     cpuid_id_string(&max_size, id_str);
-    kprintf("kernel_main: CPUID: %s %d\n", id_str, max_size);
+    printk("kernel_main: CPUID: %s %d\n", id_str, max_size);
 
     cpuid_version_t ver;
     cpuid_version(&ver);
-    kprintf("kernel_main: APIC ID: %d\n", ver.initial_apic_id);
+    printk("kernel_main: APIC ID: %d\n", ver.initial_apic_id);
 
-    kprintf("kernel_main: CR0: %p\n", get_cr0());
-    kprintf("kernel_main: CR2: %p\n", get_cr2());
-    kprintf("kernel_main: CR3: %p\n", get_cr3());
-    kprintf("kernel_main: CR4: %p\n", get_cr4());
-    kprintf("kernel_main: CS:  %p\n", get_cs());
-    kprintf("kernel_main: DS:  %p\n", get_ds());
-    kprintf("kernel_main: ES:  %p\n", get_es());
-    kprintf("kernel_main: FS:  %p\n", get_fs());
-    kprintf("kernel_main: GS:  %p\n", get_gs());
-    kprintf("kernel_main: SS:  %p\n", get_ss());
+    printk("kernel_main: CR0: %p\n", get_cr0());
+    printk("kernel_main: CR2: %p\n", get_cr2());
+    printk("kernel_main: CR3: %p\n", get_cr3());
+    printk("kernel_main: CR4: %p\n", get_cr4());
+    printk("kernel_main: CS:  %p\n", get_cs());
+    printk("kernel_main: DS:  %p\n", get_ds());
+    printk("kernel_main: ES:  %p\n", get_es());
+    printk("kernel_main: FS:  %p\n", get_fs());
+    printk("kernel_main: GS:  %p\n", get_gs());
+    printk("kernel_main: SS:  %p\n", get_ss());
 
-    kprintf("kernel_main: EXIT\n");
+    printk("kernel_main: EXIT\n");
 
     die();
 }

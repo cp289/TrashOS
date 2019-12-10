@@ -53,13 +53,13 @@ char *interrupt_string[] = {
 // Handle generic interrupt
 INTERRUPT handle_interrupt(interrupt_frame_t *ctxt)
 {
-    kprintf("INT: IP: %p CS: %p FLAGS: %p\n", ctxt->ip, ctxt->cs, ctxt->flags);
+    printk("INT: IP: %p CS: %p FLAGS: %p\n", ctxt->ip, ctxt->cs, ctxt->flags);
 }
 
 // Handle generic exception (has error code)
 INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
 {
-    kprintf("EXC: IP: %p CS: %p FLAGS: %p ERROR: %u\n", ctxt->ip, ctxt->cs,
+    printk("EXC: IP: %p CS: %p FLAGS: %p ERROR: %u\n", ctxt->ip, ctxt->cs,
             ctxt->flags, error_code);
 }
 
@@ -67,13 +67,13 @@ INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
 INTERRUPT handle_lapic_timer(volatile interrupt_frame_t *frame)
 {
     (void)frame;
-    kprintf("T");
+    printk("T");
     lapic_eoi();
 }
 
 INTERRUPT handle_unknown(interrupt_frame_t *frame)
 {
-    kprintf("UNKNOWN INTERRUPT! %p", frame);
+    printk("UNKNOWN INTERRUPT! %p", frame);
 }
 
 static void idt_init_default(void)
