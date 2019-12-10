@@ -55,13 +55,7 @@ ISO=$(NAME).iso
 all: $(ISO)
 
 # Header file prerequisites
-$(ARCHDIR)/apic.o: $(KHDRS)
-$(ARCHDIR)/gdt.o: $(KHDRS)
-$(ARCHDIR)/interrupt.o: $(KHDRS)
-$(ARCHDIR)/kernel.o: $(KHDRS)
-$(ARCHDIR)/kprintf.o: $(KHDRS)
-$(ARCHDIR)/page.o: $(KHDRS)
-$(ARCHDIR)/vga.o: $(KHDRS)
+$(KOBJS): $(KHDRS)
 
 # Special rule for compiling interrupt handlers
 $(ARCHDIR)/interrupt.o: $(ARCHDIR)/interrupt.c
