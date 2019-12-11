@@ -24,7 +24,7 @@ KOBJS=\
 	$(ARCHDIR)/gdt.o \
 	$(ARCHDIR)/interrupt.o \
 	$(ARCHDIR)/kernel.o \
-	$(ARCHDIR)/kprintf.o \
+	$(ARCHDIR)/printk.o \
 	$(ARCHDIR)/multiboot2.o \
 	$(ARCHDIR)/page.o \
 	$(ARCHDIR)/vga.o \
