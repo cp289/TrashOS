@@ -61,22 +61,26 @@
 
 // Constants
 #define PAGE_SIZE           4096
+#define PAGE_ENTRIES        1024
 
 // Flag bits for paging
-#define PAGE_IGNORE         (1 << 8)    // Only for Page Directory
-#define PAGE_GLOBAL         (1 << 8)    // Only for Page Table
-#define PAGE_LARGE          (1 << 7)    // Only for Page Directory
-#define PAGE_DIRTY          (1 << 6)    // Only for Page Table
-#define PAGE_ACCESSED       (1 << 5)
-#define PAGE_DISABLE_CACHE  (1 << 4)
-#define PAGE_WRITE_THROUGH  (1 << 3)
-#define PAGE_PUBLIC         (1 << 2)
-#define PAGE_WRITE          (1 << 1)
-#define PAGE_PRESENT        (1 << 0)
+#define PAGE_IGNORE         ((uintptr_t)1 << 8) // Only for Page Directory
+#define PAGE_GLOBAL         ((uintptr_t)1 << 8) // Only for Page Table
+#define PAGE_LARGE          ((uintptr_t)1 << 7) // Only for Page Directory
+#define PAGE_DIRTY          ((uintptr_t)1 << 6) // Only for Page Table
+#define PAGE_ACCESSED       ((uintptr_t)1 << 5)
+#define PAGE_DISABLE_CACHE  ((uintptr_t)1 << 4)
+#define PAGE_WRITE_THROUGH  ((uintptr_t)1 << 3)
+#define PAGE_PUBLIC         ((uintptr_t)1 << 2)
+#define PAGE_WRITE          ((uintptr_t)1 << 1)
+#define PAGE_PRESENT        ((uintptr_t)1 << 0)
 
 // Type for page entries
-typedef uintptr_t page_table_t[1024];
-typedef uintptr_t page_dir_t[1024];
+typedef uintptr_t page_table_t[PAGE_ENTRIES];
+typedef uintptr_t page_dir_t[PAGE_ENTRIES];
+
+extern uintptr_t *page_dir;
+extern page_table_t *page_table;
 
 static inline void page_load_dir(void *page_dir)
 {
@@ -99,6 +103,9 @@ static inline void page_enable(void)
     );
 }
 
-void page_init(void);
+void page_map(uintptr_t vma, uintptr_t pma);
+uintptr_t page_get_entry(uintptr_t vma);
+uintptr_t page_get_flags(uintptr_t vma);
+void page_set_flags(uintptr_t vma, uintptr_t flags);
 
 #endif // _KERNEL_PAGE_H

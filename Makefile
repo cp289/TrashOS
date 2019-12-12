@@ -11,17 +11,23 @@ CC=$(MARCH)-elf-gcc
 AS=$(MARCH)-elf-as
 LD=$(MARCH)-elf-ld
 
-DEBUG=-g0
-OPT=-O3 -pipe -flto=jobserver
+# TODO Supposedly x86-64 ABI requires .eh_frame sections, so should
+# -fno-asynchronous-unwind-tables be removed or placed into an
+#  architecture-specific config?
+DEBUG=-g3 -fno-asynchronous-unwind-tables
+OPT=-O3 -pipe
+LTO=-flto=jobserver
 WARN=-pedantic -Wall -Wextra -Werror
 ASFLAGS=-march=$(MARCH)
-CFLAGS=-std=gnu18 -ffreestanding $(DEBUG) $(OPT) $(WARN)
+CFLAGS_NOLTO=-std=gnu18 -ffreestanding $(DEBUG) $(OPT) $(WARN)
+CFLAGS=$(CFLAGS_NOLTO) $(LTO)
 LDFLAGS=-ffreestanding -nostdlib $(DEBUG) $(OPT) $(WARN) -lgcc
 
 KOBJS=\
 	$(ARCHDIR)/apic.o \
 	$(ARCHDIR)/boot.o \
 	$(ARCHDIR)/gdt.o \
+	$(ARCHDIR)/init.o \
 	$(ARCHDIR)/interrupt.o \
 	$(ARCHDIR)/kernel.o \
 	$(ARCHDIR)/printk.o \
@@ -37,6 +43,7 @@ KHDRS=\
 	$(ARCHDIR)/interrupt.h \
 	$(ARCHDIR)/io.h \
 	$(ARCHDIR)/math.h \
+	$(ARCHDIR)/mem.h \
 	$(ARCHDIR)/page.h \
 	$(ARCHDIR)/std.h \
 	$(ARCHDIR)/string.h \
@@ -60,6 +67,14 @@ $(KOBJS): $(KHDRS)
 # Special rule for compiling interrupt handlers
 $(ARCHDIR)/interrupt.o: $(ARCHDIR)/interrupt.c
 	$(CC) -c $< -o $@ $(CPPFLAGS) $(CFLAGS) -mgeneral-regs-only
+
+# Since init.o is placed into a custom section, we must compile without LTO due
+# to optimizer bugs. See the following for more details:
+#   https://bugs.launchpad.net/gcc-arm-embedded/+bug/1418073
+#   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78903
+#   https://gcc.gnu.org/ml/gcc-bugs/2015-03/msg00094.html
+$(ARCHDIR)/init.o: $(ARCHDIR)/init.c
+	$(CC) -c $< -o $@ $(CPPFLAGS) $(CFLAGS_NOLTO)
 
 $(KERNEL): $(KERNEL).ld $(KOBJS)
 

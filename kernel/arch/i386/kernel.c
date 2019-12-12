@@ -25,16 +25,15 @@ void kernel_main(void)
      * must be configured and loaded before the IDT
      */
     vga_init();
-    // TODO uncomment
-    //page_init();
     gdt_init();
     idt_init();
-    apic_init();
+    // TODO remap the LAPIC to fit somewhere in kernel memory space
+    //apic_init();
 
-    // TODO call a scheduline routine that does something like this
-    sti();
-    while (1)
-        halt();
+    // TODO call a scheduling routine that does something like this
+    //sti();
+    //while (1)
+    //    halt();
 
     char id_str[3 * sizeof(reg_t) + 1];
     size_t max_size;

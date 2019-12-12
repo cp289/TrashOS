@@ -3,25 +3,36 @@
  */
 
 #include "page.h"
+#include "mem.h"
 #include "std.h"
 
-static page_dir_t _Alignas(PAGE_SIZE) kernel_page_dir;
-static page_table_t _Alignas(PAGE_SIZE) kernel_page_table;
+uintptr_t *page_dir;
+page_table_t *page_table;
 
-void page_init(void)
+// Map virtual memory address (vma) to page at physical memory address (pma)
+void page_map(uintptr_t vma, uintptr_t pma)
 {
-    // Initialize all page directory entries to writable and not present
-    for (int i = 0; i < 1024; i++) {
-        kernel_page_dir[i] = PAGE_WRITE;
-    }
+    uintptr_t entry = (page_table[vma >> 22][vma >> 12 & 0x3ff] & 0xffff) | pma;
+    page_table[vma >> 22][vma >> 12 & 0x3ff] = entry;
+}
 
-    // Initialize first page table
-    kernel_page_dir[0] |= (uintptr_t)&kernel_page_table | PAGE_PRESENT;
+// Return page table entry for vma
+uintptr_t page_get_entry(uintptr_t vma)
+{
+    return page_table[vma >> 22][vma >> 12 & 0x3ff];
+}
 
-    for (int i = 0; i < 1024; i++) {
-        kernel_page_table[i] = (i << 12) | PAGE_WRITE | PAGE_PRESENT;
-    }
+// Return flags of page table entry for vma
+uintptr_t page_get_flags(uintptr_t vma)
+{
+    return page_get_entry(vma) & 0xfff;
+}
 
-    page_load_dir(&kernel_page_dir);
-    page_enable();
+// Configure flag bits in page table entry for vma
+void page_set_flags(uintptr_t vma, uintptr_t flags)
+{
+    uintptr_t entry = page_table[vma >> 22][vma >> 12 & 0x3ff];
+    entry &= ~(uintptr_t)0 >> 12 << 12;
+    entry |= flags;
+    page_table[vma >> 22][vma >> 12 & 0x3ff] = entry;
 }

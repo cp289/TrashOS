@@ -1,18 +1,23 @@
-## boot.s: Assembly bootstrap file
+## boot.s: Setup temporary stack and jump to C kernel
 
-.section .bss
+.section .init_bss
+
 .align 16
-stack_bottom:
+init_stack_bottom:
 .skip 16384     # 16 KiB
-stack_top:
+init_stack_top:
 
-.section .text
+.section .init
+
 .global _start
 .type _start, @function
 _start:
 
     # Setup stack
-    mov $stack_top, %esp
+    mov $init_stack_top, %esp
+
+    # Configure virtual address space
+    call init
 
     # Begin kernel
     call kernel_main
