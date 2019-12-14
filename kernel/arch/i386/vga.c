@@ -13,22 +13,22 @@ size_t VGA_WIDTH = 80;
 
 size_t vga_row;
 size_t vga_col;
-uint8_t vga_color;
+vga_color_t vga_color;
 
-volatile uint8_t *crtc_data = (void*) 0x3C0;
-uint16_t *vga_buffer = (void*) 0xB8000;
+volatile uint8_t *vga_crtc_data = VGA_PADDR_CRTC_DATA;
+vga_entry_t *vga_buffer = VGA_PADDR_BUFFER;
 
-static inline uint8_t vga_entry_color(vga_color_t fg, vga_color_t bg)
+static inline vga_color_t vga_entry_color(int fg, int bg)
 {
-    return fg | bg << 4;
+    return fg | (vga_color_t)bg << 4;
 }
 
-static inline uint16_t vga_entry(unsigned char uc, uint8_t color)
+static inline vga_entry_t vga_entry(unsigned char uc, vga_color_t color)
 {
-    return (uint16_t) uc | (uint16_t) color << 8;
+    return (vga_entry_t) uc | (vga_entry_t) color << 8;
 }
 
-static void vga_putentryat(char c, uint8_t color, size_t x, size_t y)
+static void vga_putentryat(char c, vga_color_t color, size_t x, size_t y)
 {
     const size_t index = y * VGA_WIDTH + x;
     vga_buffer[index] = vga_entry(c, color);
