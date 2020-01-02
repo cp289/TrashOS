@@ -8,12 +8,12 @@
 #include "string.h"
 #include "vga.h"
 
-size_t VGA_HEIGHT = 25;
-size_t VGA_WIDTH = 80;
+size_t VGA_HEIGHT = VGA_HEIGHT_DEFAULT;
+size_t VGA_WIDTH = VGA_WIDTH_DEFAULT;
 
-size_t vga_row;
-size_t vga_col;
-vga_color_t vga_color;
+static size_t vga_row = 0;
+static size_t vga_col = 0;
+static vga_color_t vga_color = VGA_COLOR_DEFAULT;
 
 volatile uint8_t *vga_crtc_data = VGA_PADDR_CRTC_DATA;
 vga_entry_t *vga_buffer = VGA_PADDR_BUFFER;
@@ -85,20 +85,24 @@ void vga_puts(const char *data)
     vga_write(data, strlen(data));
 }
 
-void vga_init()
+// Clear screen
+void vga_clear(void)
 {
-    // Set cursor position
-    vga_row = 0;
-    vga_col = 0;
-
-    // Set text color
-    vga_color = vga_entry_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-
-    // Clear screen
     for (size_t y = 0; y < VGA_HEIGHT; y++) {
         for (size_t x = 0; x < VGA_WIDTH; x++) {
             const size_t index = y * VGA_WIDTH + x;
             vga_buffer[index] = vga_entry(' ', vga_color);
         }
     }
+}
+
+void vga_map_buffer(uintptr_t new_buffer)
+{
+    vga_buffer = (void*)new_buffer;
+}
+
+void vga_set_position(size_t row, size_t col)
+{
+    vga_row = row;
+    vga_col = col;
 }

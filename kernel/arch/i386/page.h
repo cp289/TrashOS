@@ -76,18 +76,19 @@
 #define PAGE_PRESENT        ((uintptr_t)1 << 0)
 
 // Type for page entries
-typedef uintptr_t page_table_t[PAGE_ENTRIES];
-typedef uintptr_t page_dir_t[PAGE_ENTRIES];
+typedef uintptr_t page_entry_t;
 
-extern uintptr_t *page_dir;
-extern page_table_t *page_table;
+extern page_entry_t init_page_dir[PAGE_ENTRIES];
+extern page_entry_t *page_dir;
+extern uintptr_t *page_table_lookup;
 
 static inline void page_load_dir(void *page_dir)
 {
     asm (
         "movl   %0,  %%cr3\n\t"
         : // No outputs
-        : "rm" (page_dir)
+        : "r" (page_dir)
+        : // No clobbers
     );
 }
 
@@ -103,9 +104,12 @@ static inline void page_enable(void)
     );
 }
 
-void page_map(uintptr_t vma, uintptr_t pma);
+void page_clear(uintptr_t pma);
+void page_init_cleanup(void);
 uintptr_t page_get_entry(uintptr_t vma);
 uintptr_t page_get_flags(uintptr_t vma);
+void page_map(uintptr_t vma, uintptr_t pma);
 void page_set_flags(uintptr_t vma, uintptr_t flags);
+void page_unmap(uintptr_t vma);
 
 #endif // _KERNEL_PAGE_H

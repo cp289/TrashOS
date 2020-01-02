@@ -24,7 +24,7 @@ void kernel_main(void)
      * NOTE: Interrupt gates require referencing memory descriptors, so the GDT
      * must be configured and loaded before the IDT
      */
-    vga_init();
+    page_init_cleanup();
     gdt_init();
     idt_init();
     // TODO remap the LAPIC to fit somewhere in kernel memory space

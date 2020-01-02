@@ -14,10 +14,10 @@
 typedef uint16_t vga_entry_t;
 typedef uint8_t vga_color_t;
 
+#define VGA_HEIGHT_DEFAULT  25
+#define VGA_WIDTH_DEFAULT   80
 extern size_t VGA_HEIGHT;
 extern size_t VGA_WIDTH;
-extern volatile uint8_t *vga_crtc_data;
-extern uint16_t *vga_buffer;
 
 // Hardware text mode color constants
 enum {
@@ -39,9 +39,21 @@ enum {
     VGA_COLOR_WHITE,
 };
 
-void vga_init(void);
+#define VGA_COLOR_DEFAULT   ((vga_color_t)(VGA_COLOR_LIGHT_GREY | VGA_COLOR_BLACK << 4))
+
+void vga_clear(void);
+void vga_map_buffer(uintptr_t new_buffer);
 void vga_putc(char c);
 void vga_puts(const char *data);
+void vga_set_position(size_t row, size_t col);
 void vga_write(const char *data, size_t size);
+
+// VGA methods for init section
+void init_vga_clear(void);
+size_t init_vga_get_col(void);
+size_t init_vga_get_row(void);
+void init_vga_putc(char c);
+void init_vga_puts(const char *data);
+void init_vga_write(const char *data, size_t size);
 
 #endif // _KERNEL_VGA_H

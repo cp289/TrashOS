@@ -18,6 +18,8 @@
  * table (for the entire kernel) or a local string table makes more sense.
  */
 int printk(const char *format, ... );
+// Variant for init section
+int init_printk(const char *format, ... );
 
 static inline void outb(uint16_t port, uint8_t byte)
 {

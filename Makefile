@@ -34,6 +34,8 @@ KOBJS=\
 	$(ARCHDIR)/multiboot2.o \
 	$(ARCHDIR)/page.o \
 	$(ARCHDIR)/vga.o \
+	$(ARCHDIR)/init_printk.o \
+	$(ARCHDIR)/init_vga.o \
 
 KHDRS=\
 	$(ARCHDIR)/apic.h \
@@ -68,11 +70,13 @@ $(KOBJS): $(KHDRS)
 $(ARCHDIR)/interrupt.o: $(ARCHDIR)/interrupt.c
 	$(CC) -c $< -o $@ $(CPPFLAGS) $(CFLAGS) -mgeneral-regs-only
 
-# Since init.o is placed into a custom section, we must compile without LTO due
-# to optimizer bugs. See the following for more details:
+# Since init*.o are placed into a custom section, we must compile without LTO
+# due to optimizer bugs. See the following for more details:
 #   https://bugs.launchpad.net/gcc-arm-embedded/+bug/1418073
 #   https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78903
 #   https://gcc.gnu.org/ml/gcc-bugs/2015-03/msg00094.html
+$(ARCHDIR)/init_%.o: $(ARCHDIR)/init_%.c
+	$(CC) -c $< -o $@ $(CPPFLAGS) $(CFLAGS_NOLTO)
 $(ARCHDIR)/init.o: $(ARCHDIR)/init.c
 	$(CC) -c $< -o $@ $(CPPFLAGS) $(CFLAGS_NOLTO)
 
@@ -86,7 +90,7 @@ $(ISO): $(KERNEL)
 	grub-mkrescue -o $@ $(ISODIR)
 
 run: $(ISO)
-	qemu-system-$(ARCH) -cdrom $^
+	qemu-system-$(ARCH) -cdrom $^ -d cpu_reset
 
 guide.pdf: guide.tex
 	pdflatex $^

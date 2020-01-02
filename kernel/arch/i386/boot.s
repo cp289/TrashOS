@@ -3,9 +3,10 @@
 .section .init_bss
 
 .align 16
-init_stack_bottom:
+_INIT_STACK_BOTTOM:
 .skip 16384     # 16 KiB
-init_stack_top:
+.global _INIT_STACK_TOP
+_INIT_STACK_TOP:
 
 .section .init
 
@@ -14,13 +15,10 @@ init_stack_top:
 _start:
 
     # Setup stack
-    mov $init_stack_top, %esp
+    mov $_INIT_STACK_TOP, %esp
 
-    # Configure virtual address space
+    # Configure virtual address space and call kernel_main
     call init
-
-    # Begin kernel
-    call kernel_main
 
 # Set the size of the start symbol (useful for debugging)
 .size _start, . - _start
