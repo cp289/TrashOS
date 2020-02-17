@@ -63,6 +63,13 @@ INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
             ctxt->flags, error_code);
 }
 
+// Handle page fault exception
+INTERRUPT handle_page_fault(interrupt_frame_t *ctxt, uintptr_t error_code)
+{
+    (void)ctxt;
+    printk("PAGE FAULT: at %p, error: %p\n", ctxt->ip, error_code);
+}
+
 // TODO call scheduling routine
 INTERRUPT handle_lapic_timer(volatile interrupt_frame_t *frame)
 {
@@ -74,6 +81,19 @@ INTERRUPT handle_lapic_timer(volatile interrupt_frame_t *frame)
 INTERRUPT handle_unknown(interrupt_frame_t *frame)
 {
     printk("UNKNOWN INTERRUPT! %p", frame);
+}
+
+static inline idt_descriptor_t
+idt_descriptor(void (*handler)(), reg_t sel, int type, int dpl)
+{
+    return (idt_descriptor_t) {
+        .offset_lo = (uintptr_t)(handler) & 0xffff,
+        .offset_hi = (uintptr_t)(handler) >> 16,
+        .selector = sel,
+        .type = type,
+        .dpl = dpl,
+        .present = 1,
+    };
 }
 
 static void idt_init_default(void)
@@ -90,25 +110,17 @@ static void idt_init_default(void)
     // TODO change DPL values to constants?
     for (int i = 0; i < IDT_SIZE; i++) {
         switch (i) {
-            case 8: case 10: case 11: case 12: case 13: case 14: case 17:
-                idt[i] = (idt_descriptor_t) {
-                    .offset_lo = (uintptr_t)(&handle_exception) & 0xffff,
-                    .offset_hi = (uintptr_t)(&handle_exception) >> 16,
-                    .selector = get_cs(),
-                    .type = IDT_GATE_INTERRUPT32,
-                    .dpl = 0,
-                    .present = 1,
-                };
+            case 14:
+                idt[i] = idt_descriptor(&handle_page_fault, get_cs(),
+                                        IDT_GATE_INTERRUPT32, 0);
+                break;
+            case 8: case 10: case 11: case 12: case 13: case 17:
+                idt[i] = idt_descriptor(&handle_exception, get_cs(),
+                                        IDT_GATE_INTERRUPT32, 0);
                 break;
             default:
-                idt[i] = (idt_descriptor_t) {
-                    .offset_lo = (uintptr_t)(&handle_interrupt) & 0xffff,
-                    .offset_hi = (uintptr_t)(&handle_interrupt) >> 16,
-                    .selector = get_cs(),
-                    .type = IDT_GATE_INTERRUPT32,
-                    .dpl = 0,
-                    .present = 1,
-                };
+                idt[i] = idt_descriptor(&handle_interrupt, get_cs(),
+                                        IDT_GATE_INTERRUPT32, 0);
         }
     }
 }

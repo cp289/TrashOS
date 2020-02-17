@@ -12,9 +12,6 @@
 #include "std.h"
 #include "vga.h"
 
-// Linker script variable
-extern void *KERNEL_VMA;
-
 /**
  * Kernel main method
  */
@@ -24,9 +21,9 @@ void kernel_main(void)
      * NOTE: Interrupt gates require referencing memory descriptors, so the GDT
      * must be configured and loaded before the IDT
      */
-    page_init_cleanup();
     gdt_init();
     idt_init();
+    page_init_cleanup();
     // TODO remap the LAPIC to fit somewhere in kernel memory space
     //apic_init();
 
