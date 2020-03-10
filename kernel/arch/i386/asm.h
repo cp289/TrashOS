@@ -130,6 +130,19 @@ static inline reg_t get_cr4(void)
     return val;
 }
 
+// Get stack pointer
+static inline reg_t get_sp(void)
+{
+    reg_t val;
+    asm (
+        "movl %%esp, %[val]\n\t"
+        : [val] "=rm" (val)
+        : // No inputs
+        : // No clobbers
+    );
+    return val;
+}
+
 static inline flags_reg_t get_flags(void)
 {
     flags_reg_t out;

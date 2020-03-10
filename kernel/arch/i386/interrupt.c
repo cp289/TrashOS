@@ -63,11 +63,107 @@ INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
             ctxt->flags, error_code);
 }
 
-// Handle page fault exception
-INTERRUPT handle_page_fault(interrupt_frame_t *ctxt, uintptr_t error_code)
+// Possible causes for page faults
+// NOTE: some of the below causes are impossible
+enum {
+    SUPERVISOR_NOT_PRESENT = 0,
+    SUPERVISOR_VIOLATION,
+    SUPERVISOR_WRITE_NOT_PRESENT,
+    SUPERVISOR_WRITE_VIOLATION,
+    USER_NOT_PRESENT,
+    USER_VIOLATION,
+    USER_WRITE_NOT_PRESENT,
+    USER_WRITE_VIOLATION,
+    RESERVED_SUPERVISOR_NOT_PRESENT,
+    RESERVED_SUPERVISOR_VIOLATION,
+    RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
+    RESERVED_SUPERVISOR_WRITE_VIOLATION,
+    RESERVED_USER_NOT_PRESENT,
+    RESERVED_USER_VIOLATION,
+    RESERVED_USER_WRITE_NOT_PRESENT,
+    RESERVED_USER_WRITE_VIOLATION,
+    FETCH_SUPERVISOR_NOT_PRESENT,
+    FETCH_SUPERVISOR_VIOLATION,
+    FETCH_SUPERVISOR_WRITE_NOT_PRESENT,
+    FETCH_SUPERVISOR_WRITE_VIOLATION,
+    FETCH_USER_NOT_PRESENT,
+    FETCH_USER_VIOLATION,
+    FETCH_USER_WRITE_NOT_PRESENT,
+    FETCH_USER_WRITE_VIOLATION,
+    FETCH_RESERVED_SUPERVISOR_NOT_PRESENT,
+    FETCH_RESERVED_SUPERVISOR_VIOLATION,
+    FETCH_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
+    FETCH_RESERVED_SUPERVISOR_WRITE_VIOLATION,
+    FETCH_RESERVED_USER_NOT_PRESENT,
+    FETCH_RESERVED_USER_VIOLATION,
+    FETCH_RESERVED_USER_WRITE_NOT_PRESENT,
+    FETCH_RESERVED_USER_WRITE_VIOLATION,
+    PROTECTION_SUPERVISOR_NOT_PRESENT,
+    PROTECTION_SUPERVISOR_VIOLATION,
+    PROTECTION_SUPERVISOR_WRITE_NOT_PRESENT,
+    PROTECTION_SUPERVISOR_WRITE_VIOLATION,
+    PROTECTION_USER_NOT_PRESENT,
+    PROTECTION_USER_VIOLATION,
+    PROTECTION_USER_WRITE_NOT_PRESENT,
+    PROTECTION_USER_WRITE_VIOLATION,
+    PROTECTION_RESERVED_SUPERVISOR_NOT_PRESENT,
+    PROTECTION_RESERVED_SUPERVISOR_VIOLATION,
+    PROTECTION_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
+    PROTECTION_RESERVED_SUPERVISOR_WRITE_VIOLATION,
+    PROTECTION_RESERVED_USER_NOT_PRESENT,
+    PROTECTION_RESERVED_USER_VIOLATION,
+    PROTECTION_RESERVED_USER_WRITE_NOT_PRESENT,
+    PROTECTION_RESERVED_USER_WRITE_VIOLATION,
+    PROTECTION_FETCH_SUPERVISOR_NOT_PRESENT,
+    PROTECTION_FETCH_SUPERVISOR_VIOLATION,
+    PROTECTION_FETCH_SUPERVISOR_WRITE_NOT_PRESENT,
+    PROTECTION_FETCH_SUPERVISOR_WRITE_VIOLATION,
+    PROTECTION_FETCH_USER_NOT_PRESENT,
+    PROTECTION_FETCH_USER_VIOLATION,
+    PROTECTION_FETCH_USER_WRITE_NOT_PRESENT,
+    PROTECTION_FETCH_USER_WRITE_VIOLATION,
+    PROTECTION_FETCH_RESERVED_SUPERVISOR_NOT_PRESENT,
+    PROTECTION_FETCH_RESERVED_SUPERVISOR_VIOLATION,
+    PROTECTION_FETCH_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
+    PROTECTION_FETCH_RESERVED_SUPERVISOR_WRITE_VIOLATION,
+    PROTECTION_FETCH_RESERVED_USER_NOT_PRESENT,
+    PROTECTION_FETCH_RESERVED_USER_VIOLATION,
+    PROTECTION_FETCH_RESERVED_USER_WRITE_NOT_PRESENT,
+    PROTECTION_FETCH_RESERVED_USER_WRITE_VIOLATION,
+};
+
+// TODO move to header file
+typedef union
 {
-    (void)ctxt;
-    printk("PAGE FAULT: at %p, error: %p\n", ctxt->ip, error_code);
+    uintptr_t raw;
+    struct {
+        uintptr_t violation     : 1; // 0: non-present page, 1: protection violation
+        uintptr_t write         : 1; // Caused by a write
+        uintptr_t user_mode     : 1; // Caused in user_mode
+        uintptr_t reserved      : 1; // Caused by RSVD flag
+        uintptr_t instruction   : 1; // Caused by instruction fetch
+        uintptr_t protection    : 1; // Caused by protection-key violation
+        uintptr_t _reserved0    : 9;
+        uintptr_t sgx           : 1; // Caused by violation of SGX-specific access control
+        uintptr_t _reserved1    : 16;
+    } bits;
+} error_code_page_t;
+
+// Handle page fault exception
+INTERRUPT handle_page_fault(interrupt_frame_t *ctxt, uintptr_t error_raw)
+{
+    error_code_page_t error = { .raw = error_raw };
+
+    if (error.bits.user_mode) {
+        printk("USER PAGE FAULT: at %p, error: %p\n", ctxt->ip, error);
+    } else {
+        if (!error.bits.violation) {
+            printk("SUPERVISOR PAGE ABSENT FROM %p: at %p, error: %p, sp: %p\n", get_cr2(), ctxt->ip, error, get_sp());
+        } else {
+            printk("UNKNOWN PAGE FAULT: at %p, error: %p\n", ctxt->ip, error);
+        }
+    }
+    halt();
 }
 
 // TODO call scheduling routine
