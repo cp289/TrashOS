@@ -30,6 +30,7 @@ KOBJS=\
 	$(ARCHDIR)/init.o \
 	$(ARCHDIR)/interrupt.o \
 	$(ARCHDIR)/kernel.o \
+	$(ARCHDIR)/kmalloc.o \
 	$(ARCHDIR)/printk.o \
 	$(ARCHDIR)/multiboot2.o \
 	$(ARCHDIR)/page.o \
@@ -44,6 +45,7 @@ KHDRS=\
 	$(ARCHDIR)/gdt.h \
 	$(ARCHDIR)/interrupt.h \
 	$(ARCHDIR)/io.h \
+	$(ARCHDIR)/kmalloc.h \
 	$(ARCHDIR)/math.h \
 	$(ARCHDIR)/mem.h \
 	$(ARCHDIR)/page.h \

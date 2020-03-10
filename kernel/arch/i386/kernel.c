@@ -8,6 +8,7 @@
 #include "gdt.h"
 #include "interrupt.h"
 #include "io.h"
+#include "kmalloc.h"
 #include "page.h"
 #include "std.h"
 #include "vga.h"

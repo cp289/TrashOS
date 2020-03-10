@@ -2,14 +2,17 @@
  * page.c: Paging
  */
 
+#include "kmalloc.h"
 #include "page.h"
 #include "mem.h"
 #include "std.h"
 
 uintptr_t *page_dir;
 uintptr_t *page_table_lookup;
-uintptr_t kernel_brk;
-uintptr_t kernel_vbrk;
+uintptr_t kernel_heap_end_pma;
+uintptr_t kernel_heap_end_vma;
+
+static page_free_node_t *page_free_list = NULL;
 
 // Erase page (overwrite with zeros)
 void page_clear(uintptr_t vma)
@@ -21,11 +24,11 @@ void page_clear(uintptr_t vma)
 }
 
 // Dynamically allocate new page table
-static uintptr_t new_page_table(void)
+static uintptr_t page_table_new(void)
 {
-    uintptr_t table = align(kernel_brk, PAGE_SIZE);
+    uintptr_t table = align(kernel_heap_end_pma, PAGE_SIZE);
     page_clear(table);
-    kernel_brk = table + PAGE_SIZE;
+    kernel_heap_end_pma = table + PAGE_SIZE;
     return table;
 }
 
@@ -41,7 +44,9 @@ static inline uintptr_t page_get_table_idx(uintptr_t vma)
 
 static void * page_get_table(uintptr_t vma)
 {
-    return (void*)page_table_lookup[page_get_dir_idx(vma)];
+    const uintptr_t idx = page_get_dir_idx(vma);
+    void * ret = (void*)page_table_lookup[idx];
+    return ret;
 }
 
 // Map virtual memory address (vma) to page at physical memory address (pma)
@@ -54,13 +59,19 @@ void page_map(uintptr_t vma, uintptr_t pma)
 
     // Allocate new page table if necessary
     if (!(page_dir[page_dir_idx] & PAGE_PRESENT)) {
-        uintptr_t new_table = new_page_table();
+        uintptr_t new_table = page_table_new();
         table = (void*)new_table;
         page_dir[page_dir_idx] = new_table | PAGE_WRITE | PAGE_PRESENT;
         table[page_table_idx] = pma;
     } else {
         table[page_table_idx] = (table[page_table_idx] & 0xfff) | pma;
     }
+}
+
+void page_map_flags(uintptr_t vma, uintptr_t pma, uintptr_t flags)
+{
+    page_map(vma, pma);
+    page_set_flags(vma, flags);
 }
 
 // Unmap page by zeroing its page table entry
@@ -72,7 +83,7 @@ void page_unmap(uintptr_t vma)
 
 void page_set_flags(uintptr_t vma, uintptr_t flags)
 {
-    const uintptr_t page_table_idx = vma >> 12 & 0x3ff;
+    const uintptr_t page_table_idx = page_get_table_idx(vma);
     page_entry_t *table = page_get_table(vma);
     table[page_table_idx] = (table[page_table_idx] >> 12 << 12) | flags;
 }
@@ -84,23 +95,79 @@ uintptr_t page_get_entry(uintptr_t vma)
     return table[page_get_table_idx(vma)];
 }
 
+// Return page table entry for vma
+uintptr_t page_get_pma(uintptr_t vma)
+{
+    page_entry_t *table = page_get_table(vma);
+    return table[page_get_table_idx(vma)] & ~(uintptr_t)0xfff;
+}
+
 // Return flags of page table entry for vma
 uintptr_t page_get_flags(uintptr_t vma)
 {
     return page_get_entry(vma) & 0xfff;
 }
 
+// TODO handle error conditions, e.g. no more physical pages
+// Return PMA of new page from the free page list or at the end of kernel heap
+void page_new(uintptr_t vma, uintptr_t flags)
+{
+    uintptr_t pma = 0;  // PMA of new page
+
+    // Check the free list
+    if (page_free_list) {
+        pma = page_free_list->pma;
+        void *old_node = page_free_list;
+        page_free_list = page_free_list->next;
+        kfree(old_node);
+    } else {
+        // If nothing is free, add a new page at kernel_heap_end_pma
+        pma = kernel_heap_end_pma;
+        kernel_heap_end_pma += PAGE_SIZE;
+    }
+    page_map_flags(vma, pma, flags);
+}
+
+bool page_is_present(uintptr_t vma)
+{
+    return page_get_pma(vma) & PAGE_PRESENT;
+}
+
+// Unmap page and add its PMA to the free list
+void page_free(uintptr_t vma)
+{
+    page_free_node_t *new_node = kmalloc(sizeof(page_free_node_t));
+
+    *new_node = (page_free_node_t){
+        .pma = page_get_pma(vma),
+        .next = page_free_list,
+    };
+
+    page_unmap(vma);
+    page_free_list = new_node;
+}
+
 void page_init_cleanup(void)
 {
-    // Zero out and unmap all init pages (except for init_page_dir)
+    kmalloc_init(kernel_heap_end_vma);
+
+    // Zero out and free all init pages (except for init_page_dir and
+    // init_page_table_lookup)
     uintptr_t i;
-    for (i = INIT_START; i < (uintptr_t)&init_page_dir; i += PAGE_SIZE) {
+    for (i = INIT_START; i < (uintptr_t)&init_page_struct; i += PAGE_SIZE) {
         page_clear(i);
-        page_unmap(i);
+        page_free(i);
     }
-    page_unmap(i);  // Only unmap init_page_dir, don't clear
-    for (i += PAGE_SIZE; i < INIT_BSS_END; i += PAGE_SIZE) {
-        page_clear(i);
+
+    // Only unmap init_page_struct, don't clear
+    for (size_t j = 0; j < sizeof(init_page_struct_t); j += PAGE_SIZE) {
         page_unmap(i);
+        i += PAGE_SIZE;
+    }
+
+    // Clear and unmap the rest
+    for ( ; i < INIT_BSS_END; i += PAGE_SIZE) {
+        page_clear(i);
+        page_free(i);
     }
 }

@@ -64,6 +64,6 @@ static inline uintptr_t align(uintptr_t addr, int byte)
     return (addr & ~((uintptr_t)byte - 1)) + byte * ((addr & (byte - 1)) != 0);
 }
 
-extern uintptr_t kernel_brk;        // End of kernel heap (copied after paging)
+extern uintptr_t kernel_heap_end_vma; // End of kernel heap (copied after paging)
 
 #endif // _MEM_H

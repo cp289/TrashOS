@@ -78,7 +78,20 @@
 // Type for page entries
 typedef uintptr_t page_entry_t;
 
-extern page_entry_t init_page_dir[PAGE_ENTRIES];
+// Structure for the page directory and lookup table in init memory section
+typedef struct {
+    page_entry_t init_page_dir[PAGE_ENTRIES];
+    page_entry_t init_page_table_lookup[PAGE_ENTRIES];
+} init_page_struct_t;
+
+// Linked list node for page free list
+typedef struct page_free_node
+{
+    uintptr_t pma;
+    struct page_free_node *next;
+} page_free_node_t;
+
+extern init_page_struct_t init_page_struct;
 extern page_entry_t *page_dir;
 extern uintptr_t *page_table_lookup;
 
@@ -106,9 +119,13 @@ static inline void page_enable(void)
 
 void page_clear(uintptr_t pma);
 void page_init_cleanup(void);
+void page_free(uintptr_t vma);
 uintptr_t page_get_entry(uintptr_t vma);
 uintptr_t page_get_flags(uintptr_t vma);
+bool page_is_present(uintptr_t vma);
 void page_map(uintptr_t vma, uintptr_t pma);
+void page_map_flags(uintptr_t vma, uintptr_t pma, uintptr_t flags);
+void page_new(uintptr_t vma, uintptr_t flags);
 void page_set_flags(uintptr_t vma, uintptr_t flags);
 void page_unmap(uintptr_t vma);
 

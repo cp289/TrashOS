@@ -14,14 +14,16 @@ extern void kernel_main(void);      // Kernel entry point
 // structures for the init section. We later discard the generated code and
 // remap important data into kernel address space.
 
-page_entry_t _Alignas(PAGE_SIZE) init_page_dir[PAGE_ENTRIES];
-// This lookup table hosts the virtual addresses for each page table
-static uintptr_t *init_page_table_lookup;
+init_page_struct_t _Alignas(PAGE_SIZE) init_page_struct;
 
-static uintptr_t init_kernel_brk;
-static uintptr_t init_brk;               // See description for init_page_map()
-static uintptr_t init_vga_buffer_vma;    // Mapped address for vga buffer
-static uintptr_t init_page_table_offset; // Offset for new page table
+static uintptr_t init_page_next_pma;     // PMA for next available page
+static uintptr_t init_page_next_vma;     // VMA for next virtual page
+static uintptr_t init_vga_buffer_vma;    // VMA for vga buffer
+
+// This counter keeps track of the virtual offset of dynamically-allocated page
+// tables. These values must be non-zero and are later used to update
+// page_table_lookup with absolute VMAs.
+static uintptr_t page_table_vma_offset = PAGE_SIZE;
 
 // Erase page (overwrite with zeros)
 static void init_page_clear(uintptr_t pma)
@@ -32,20 +34,23 @@ static void init_page_clear(uintptr_t pma)
     }
 }
 
-// Dynamically allocate new page on kernel heap
-static uintptr_t init_page_new(void)
+// Dynamically allocate new page on kernel heap and add entry to lookup table
+static uintptr_t init_page_table_new(uintptr_t vma)
 {
-    uintptr_t table = align(init_brk, PAGE_SIZE);
-    init_page_clear(table);
-    init_brk = table + PAGE_SIZE;
-    return table;
+    const uintptr_t page_dir_idx = vma >> 22;
+    uintptr_t table_pma = align(init_page_next_pma, PAGE_SIZE);
+    init_page_clear(table_pma);
+    init_page_next_pma = table_pma + PAGE_SIZE;
+    init_page_struct.init_page_table_lookup[page_dir_idx] = page_table_vma_offset;
+    page_table_vma_offset += PAGE_SIZE;
+    return table_pma;
 }
 
 /**
  * We assume at this point that most page directory entries are initialized to
  * not present. We must therefore dynamically allocate page tables when
- * necessary. For this, we use init_brk to keep track of new physical memory
- * allocations.
+ * necessary. For this, we use init_page_next_pma to keep track of new physical
+ * memory allocations.
  * NOTE: This routine simply maps the address without altering flags
  */
 static void init_page_map(uintptr_t vma, uintptr_t pma, uintptr_t flags)
@@ -53,15 +58,13 @@ static void init_page_map(uintptr_t vma, uintptr_t pma, uintptr_t flags)
     const uintptr_t page_dir_idx = vma >> 22;
     const uintptr_t page_table_idx = vma >> 12 & 0x3ff;
 
-    page_entry_t *table = (void*)(init_page_dir[page_dir_idx] >> 12 << 12);
+    page_entry_t *table = (void*)(init_page_struct.init_page_dir[page_dir_idx] >> 12 << 12);
 
     // Allocate new page table if necessary
-    if (!(init_page_dir[page_dir_idx] & PAGE_PRESENT)) {
-        uintptr_t new_table = init_page_new();
+    if (!(init_page_struct.init_page_dir[page_dir_idx] & PAGE_PRESENT)) {
+        uintptr_t new_table = init_page_table_new(vma);
         table = (void*)new_table;
-        init_page_dir[page_dir_idx] = new_table | PAGE_WRITE | PAGE_PRESENT;
-        init_page_table_lookup[page_dir_idx] = init_page_table_offset;
-        init_page_table_offset += PAGE_SIZE;
+        init_page_struct.init_page_dir[page_dir_idx] = new_table | PAGE_WRITE | PAGE_PRESENT;
         table[page_table_idx] = pma;
     } else {
         table[page_table_idx] = (table[page_table_idx] & 0xfff) | pma;
@@ -72,19 +75,14 @@ static void init_page_map(uintptr_t vma, uintptr_t pma, uintptr_t flags)
 // Map kernel into virtual address space
 static void init_map_kernel(void)
 {
-    init_brk = KERNEL_END - KERNEL_VMA + INIT_BSS_END;
-
-    // We start placing new page tables after the kernel BSS section and the
+    // We start mapping new physical pages after the kernel BSS section and the
     // page directory
-    init_page_table_offset = BSS_END + PAGE_SIZE;
+    init_page_next_pma = KERNEL_END - KERNEL_VMA + INIT_BSS_END;
 
     // Initialize all page directory entries to writable
     for (int i = 0; i < PAGE_ENTRIES; i++) {
-        init_page_dir[i] = PAGE_WRITE;
+        init_page_struct.init_page_dir[i] = PAGE_WRITE;
     }
-
-    // Allocate and initialize init_page_table_lookup
-    init_page_table_lookup = (void*)init_page_new();
 
     // Identity map init section
     uintptr_t i;
@@ -103,13 +101,28 @@ static void init_map_kernel(void)
                       PAGE_WRITE | PAGE_PRESENT);
     }
 
-    init_kernel_brk = BSS_END;
+    init_page_next_vma = BSS_END;
 
     // Map page directory
-    init_page_map(init_kernel_brk, (uintptr_t)&init_page_dir,
+    init_page_map(init_page_next_vma, (uintptr_t)&init_page_struct.init_page_dir,
                   PAGE_WRITE | PAGE_PRESENT);
 
-    init_kernel_brk += PAGE_SIZE;
+    init_page_next_vma += PAGE_SIZE;
+
+    // Map page table lookup table
+    init_page_map(init_page_next_vma, (uintptr_t)&init_page_struct.init_page_table_lookup,
+                  PAGE_WRITE | PAGE_PRESENT);
+
+    init_page_next_vma += PAGE_SIZE;
+
+    // Now, init_page_next_vma is the start of VMAs for dynamic page tables. We
+    // update page_table_lookup to absolute addresses.
+    for (i = 0; i < PAGE_ENTRIES; i++) {
+        if(init_page_struct.init_page_table_lookup[i])
+            // NOTE: Since init_page_table_offset started at PAGE_SIZE for the
+            // non-zero check, we must subtract PAGE_SIZE here.
+            init_page_struct.init_page_table_lookup[i] += init_page_next_vma - PAGE_SIZE;
+    }
 
     /**
      * At this point, all predictable components have been mapped into kernel
@@ -118,42 +131,42 @@ static void init_map_kernel(void)
      * doing so, we must make sure that any additionally allocated page tables
      * are also accounted for.
      */
-    uintptr_t kernel_end_pma = KERNEL_END - KERNEL_VMA + INIT_BSS_END;
-    uintptr_t init_alloc_size = init_brk - kernel_end_pma;
+    const uintptr_t kernel_end_pma = KERNEL_END - KERNEL_VMA + INIT_BSS_END;
+    const uintptr_t init_alloc_size = init_page_next_pma - kernel_end_pma;
 
     // Determine if more page tables are needed
     size_t n_new_tables;
     uintptr_t kernel_end_dir_aligned = align(kernel_end_pma,
                                              PAGE_ENTRIES * PAGE_SIZE);
-    if (init_brk < kernel_end_dir_aligned) {
+    if (init_page_next_pma < kernel_end_dir_aligned) {
         n_new_tables = 0;
     } else {
-        n_new_tables = init_brk - kernel_end_dir_aligned;
+        n_new_tables = init_page_next_pma - kernel_end_dir_aligned;
         n_new_tables /= PAGE_ENTRIES * PAGE_SIZE;
     }
 
     // Map all dynamically-allocated page tables into kernel space
     for (i = 0; i < init_alloc_size + n_new_tables * PAGE_SIZE;
          i += PAGE_SIZE) {
-        init_page_map(init_kernel_brk + i, kernel_end_pma + i,
+        init_page_map(init_page_next_vma + i, kernel_end_pma + i,
                       PAGE_WRITE | PAGE_PRESENT);
     }
 
-    init_kernel_brk += i;
+    init_page_next_vma += i;
 
     // Map VGA space
-    init_vga_buffer_vma = init_kernel_brk;
+    init_vga_buffer_vma = init_page_next_vma;
     for (i = 0;
          i < VGA_WIDTH_DEFAULT * VGA_HEIGHT_DEFAULT * sizeof(vga_entry_t);
          i += PAGE_SIZE) {
-        init_page_map(init_kernel_brk + i, (uintptr_t)VGA_PADDR_BUFFER + i,
+        init_page_map(init_page_next_vma + i, (uintptr_t)VGA_PADDR_BUFFER + i,
                       PAGE_WRITE | PAGE_PRESENT);
     }
 
-    init_kernel_brk += i;
+    init_page_next_vma += i;
 
     // Lastly, we map a page for the kernel stack
-    init_page_map(-(intptr_t)PAGE_SIZE, init_brk, PAGE_WRITE | PAGE_PRESENT);
+    init_page_map(-(intptr_t)PAGE_SIZE, init_page_next_pma, PAGE_WRITE | PAGE_PRESENT);
 }
 
 void init(void)
@@ -162,7 +175,7 @@ void init(void)
     init_map_kernel();
 
     // Enable paging
-    page_load_dir(&init_page_dir);
+    page_load_dir(&init_page_struct.init_page_dir);
     page_enable();
 
     // Point vga_buffer to the mapped location
@@ -170,8 +183,8 @@ void init(void)
     vga_set_position(init_vga_get_row(), init_vga_get_col());
 
     // Pass on important references
-    kernel_brk = init_kernel_brk;
-    page_dir = (void*)&init_page_dir;
+    kernel_heap_end_vma = init_page_next_vma;
+    page_dir = (void*)BSS_END;
     page_table_lookup = (void*)(BSS_END + PAGE_SIZE);
 
     // Switch to new stack and start kernel
