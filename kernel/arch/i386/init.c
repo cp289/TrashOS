@@ -184,6 +184,7 @@ void init(void)
 
     // Pass on important references
     kernel_heap_end_vma = init_page_next_vma;
+    kernel_heap_end_pma = init_page_next_pma;
     page_dir = (void*)BSS_END;
     page_table_lookup = (void*)(BSS_END + PAGE_SIZE);
 
