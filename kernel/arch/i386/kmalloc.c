@@ -2,6 +2,7 @@
  * kmalloc.c: Kernel memory allocator
  */
 
+#include "asm.h"
 #include "io.h"
 #include "kmalloc.h"
 #include "mem.h"
@@ -85,9 +86,14 @@ static inline void km_set_free(void *vma)
     km_get_next_desc(vma)->size_prev |= KM_CHUNK_FREE;
 }
 
-void * alloc(km_ctxt_t *ctxt, size_t bytes)
+void *
+alloc(km_ctxt_t *ctxt, uintptr_t (*get_page_pma)(), size_t alignment, size_t bytes)
 {
     bytes = bytes ? align(bytes, KM_MIN_ALLOC_SIZE) : KM_MIN_ALLOC_SIZE;
+
+    // TODO We temporary avoid the free list for aligned allocations
+    if (alignment != KM_MIN_ALLOC_SIZE)
+        goto extend_heap;
 
     // Check for an appropriately sized memory chunk in the free list
     for (km_node_t *n = ctxt->free_list; n; ) {
@@ -126,16 +132,48 @@ void * alloc(km_ctxt_t *ctxt, size_t bytes)
     }
 
     // There is nothing suitable in the free list, so we extend the heap
+    uintptr_t free_block_size;
 
-    // First, allocate as many new pages as needed
-    for (size_t page = align(ctxt->end, PAGE_SIZE);
-         page < ctxt->end + bytes + sizeof(km_chunk_desc_t);
-         page += PAGE_SIZE) {
-        page_new(page, PAGE_WRITE | PAGE_PRESENT);
+extend_heap:
+
+    // First, we enforce alignment request
+
+    // Add unused space to free list if necessary
+    free_block_size = align(ctxt->end, alignment) - ctxt->end;
+    if (free_block_size) {
+        if (free_block_size <= sizeof(km_chunk_desc_t)) {
+            printk("alloc: fatal: free block below min size: %u\n", free_block_size);
+            die();
+            // TODO extend previous memory chunk size to cover unused region
+        } else {
+            // Push unused region to the free list
+            // TODO write test case
+            km_chunk_desc_t *free_chunk = km_get_desc((void*)ctxt->end);
+            free_chunk->size = free_block_size - sizeof(km_chunk_desc_t);
+            free_chunk->size |= KM_CHUNK_FREE;
+            km_chunk_desc_t *free_chunk_next = km_get_next_desc((void*)ctxt->end);
+            free_chunk_next->size_prev = free_chunk->size;
+            km_node_add(ctxt, (void*)ctxt->end);
+        }
+        ctxt->end += free_block_size;
+    }
+
+    // Update end of the heap
+    // WARNING ctxt->end must be updated here before calling get_page_pma() to
+    // avoid a potential nested invocation of alloc()
+    uintptr_t old_ctxt_end = ctxt->end;
+    ctxt->end += bytes + sizeof(km_chunk_desc_t);
+
+    // Next, allocate/map as many new physical pages as needed
+    for (size_t page_vma = align(old_ctxt_end, PAGE_SIZE);
+         page_vma < old_ctxt_end + bytes + sizeof(km_chunk_desc_t);
+         page_vma += PAGE_SIZE) {
+        uintptr_t page_pma = get_page_pma();
+        page_map_flags(page_vma, page_pma, PAGE_WRITE | PAGE_PRESENT);
     }
 
     // Initialize chunk descriptors
-    void *vma = (void*)ctxt->end;
+    void *vma = (void*)old_ctxt_end;
     km_chunk_desc_t *chunk = km_get_desc(vma);
     chunk->size = bytes;
 
@@ -143,10 +181,12 @@ void * alloc(km_ctxt_t *ctxt, size_t bytes)
     chunk_next->size_prev = bytes;
     chunk_next->size = 0;
 
-    // Update end of the heap
-    ctxt->end += bytes + sizeof(km_chunk_desc_t);
-
     return vma;
+}
+
+void * kalloc(uintptr_t (*get_page_pma)(), size_t alignment, size_t bytes)
+{
+    return alloc(&kernel_ctxt, get_page_pma, alignment, bytes);
 }
 
 void km_free(km_ctxt_t *ctxt, void *vma)
@@ -203,7 +243,7 @@ km_ctxt_t km_new_heap(uintptr_t heap_start)
 
     uintptr_t first_chunk_addr = align(heap_start, KM_MIN_ALLOC_SIZE);
     if (!page_is_present(first_chunk_addr)) {
-        page_new(first_chunk_addr, PAGE_WRITE | PAGE_PRESENT);
+        page_map_flags(first_chunk_addr, page_new(), PAGE_WRITE | PAGE_PRESENT);
     }
     km_chunk_desc_t * first_chunk = (void*)first_chunk_addr;
     first_chunk->size_prev = 0;
@@ -222,7 +262,12 @@ void kmalloc_init(uintptr_t heap_start)
 
 void * kmalloc(size_t bytes)
 {
-    return alloc(&kernel_ctxt, bytes);
+    return alloc(&kernel_ctxt, &page_new, KM_MIN_ALLOC_SIZE, bytes);
+}
+
+void * kmalloc_aligned(size_t bytes, size_t align)
+{
+    return alloc(&kernel_ctxt, &page_new, align, bytes);
 }
 
 void kfree(void *vma)

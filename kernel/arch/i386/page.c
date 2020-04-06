@@ -109,8 +109,8 @@ uintptr_t page_get_flags(uintptr_t vma)
 }
 
 // TODO handle error conditions, e.g. no more physical pages
-// Return PMA of new page from the free page list or at the end of kernel heap
-void page_new(uintptr_t vma, uintptr_t flags)
+// Return PMA of new page from the free page list or at the end of page heap
+uintptr_t page_new(void)
 {
     uintptr_t pma = 0;  // PMA of new page
 
@@ -125,7 +125,7 @@ void page_new(uintptr_t vma, uintptr_t flags)
         pma = kernel_heap_end_pma;
         kernel_heap_end_pma += PAGE_SIZE;
     }
-    page_map_flags(vma, pma, flags);
+    return pma;
 }
 
 bool page_is_present(uintptr_t vma)

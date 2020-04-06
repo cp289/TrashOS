@@ -20,9 +20,9 @@ typedef struct km_node
 // km_ctxt: heap context for kmalloc
 typedef struct
 {
-    km_node_t *free_list; // Pointer to free list
-    uintptr_t start;    // Pointer to start of context heap
-    uintptr_t end;      // Pointer to end of context heap
+    km_node_t *free_list;   // Pointer to free list
+    uintptr_t start;        // Pointer to start of context heap
+    uintptr_t end;          // Pointer to end of context heap
 } km_ctxt_t;
 
 typedef struct
@@ -33,6 +33,9 @@ typedef struct
     size_t size;
 } km_chunk_desc_t;
 
+void *
+alloc(km_ctxt_t *ctxt, uintptr_t (*get_page_pma)(), size_t align, size_t bytes);
+void * kalloc(uintptr_t (*get_page_pma)(), size_t alignment, size_t bytes);
 void kmalloc_test(void);
 km_ctxt_t km_new_heap(uintptr_t heap_start);
 void kmalloc_init(uintptr_t heap_start);

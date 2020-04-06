@@ -13,11 +13,19 @@
 #include "std.h"
 #include "vga.h"
 
+// Run unit tests
+// TODO generate / return return error codes
+static void kernel_test(void)
+{
+    kmalloc_test();
+}
+
 /**
  * Kernel main method
  */
 void kernel_main(void)
 {
+    (void)kernel_test;
     /**
      * NOTE: Interrupt gates require referencing memory descriptors, so the GDT
      * must be configured and loaded before the IDT
@@ -25,13 +33,12 @@ void kernel_main(void)
     gdt_init();
     idt_init();
     page_init_cleanup();
-    // TODO remap the LAPIC to fit somewhere in kernel memory space
-    //apic_init();
+    apic_init();
 
     // TODO call a scheduling routine that does something like this
-    //sti();
-    //while (1)
-    //    halt();
+    sti();
+    while (1)
+        halt();
 
     char id_str[3 * sizeof(reg_t) + 1];
     size_t max_size;

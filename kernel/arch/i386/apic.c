@@ -7,14 +7,18 @@
 #include "cpuid.h"
 #include "interrupt.h"
 #include "io.h"
+#include "kmalloc.h"
+#include "page.h"
 
-void *lapic_base;
+static void *lapic_base_vma;
+static uintptr_t lapic_base_pma;
+static bool get_page_first_run = true;
 
 static void lapic_timer_init(uint32_t period)
 {
-    apic_lvt_reg_t volatile *reg = lapic_base;
+    apic_lvt_reg_t volatile *reg = lapic_base_vma;
 
-    printk("lapic_timer_init: LAPIC base: %p\n", reg);
+    printk("lapic_timer_init: LAPIC base: %p, pma: %p\n", reg, page_get_pma((uintptr_t)reg));
     apic_lvt_reg_t ver = reg[APIC_VER_IDX];
     printk("lapic_timer_init: LAPIC version: %x, max lvt: %d\n", ver.ver.version, ver.ver.max_lvt_entry);
 
@@ -69,8 +73,17 @@ static void pic_disable(void)
 // Send EOI
 void lapic_eoi(void)
 {
-    apic_lvt_reg_t volatile *reg = lapic_base;
+    apic_lvt_reg_t volatile *reg = lapic_base_vma;
     reg[APIC_EOI_IDX].raw = 0;
+}
+
+uintptr_t lvt_get_page_pma(void)
+{
+    if (get_page_first_run) {
+        get_page_first_run = false;
+        return lapic_base_pma;
+    }
+    return PAGE_GET_DEFAULT();
 }
 
 void apic_init(void)
@@ -103,9 +116,11 @@ void apic_init(void)
         halt();
     }
 
-    lapic_base = (void*)((uintptr_t)msr.base << 12);
+    // Calculate local APIC register physical base address from MSR
+    lapic_base_pma = (uintptr_t)msr.base << 12;
 
-    printk("apic_init: MSR: bsp: %d, enable: %d, base: %p\n", msr.bsp, msr.enable, msr.base << 12);
+    // Map page lapic registers
+    lapic_base_vma = kalloc(&lvt_get_page_pma, PAGE_SIZE, PAGE_SIZE);
 
     lapic_timer_init(0x10000);
 }
