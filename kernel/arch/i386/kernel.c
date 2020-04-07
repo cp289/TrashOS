@@ -2,13 +2,13 @@
  * kernel.c: Main kernel file
  */
 
+#include "alloc.h"
 #include "apic.h"
 #include "asm.h"
 #include "cpuid.h"
 #include "gdt.h"
 #include "interrupt.h"
 #include "io.h"
-#include "kmalloc.h"
 #include "page.h"
 #include "std.h"
 #include "vga.h"

@@ -24,13 +24,13 @@ CFLAGS=$(CFLAGS_NOLTO) $(LTO)
 LDFLAGS=-ffreestanding -nostdlib $(DEBUG) $(OPT) $(WARN) -lgcc
 
 KOBJS=\
+	$(ARCHDIR)/alloc.o \
 	$(ARCHDIR)/apic.o \
 	$(ARCHDIR)/boot.o \
 	$(ARCHDIR)/gdt.o \
 	$(ARCHDIR)/init.o \
 	$(ARCHDIR)/interrupt.o \
 	$(ARCHDIR)/kernel.o \
-	$(ARCHDIR)/kmalloc.o \
 	$(ARCHDIR)/printk.o \
 	$(ARCHDIR)/multiboot2.o \
 	$(ARCHDIR)/page.o \
@@ -39,13 +39,13 @@ KOBJS=\
 	$(ARCHDIR)/init_vga.o \
 
 KHDRS=\
+	$(ARCHDIR)/alloc.h \
 	$(ARCHDIR)/apic.h \
 	$(ARCHDIR)/asm.h \
 	$(ARCHDIR)/cpuid.h \
 	$(ARCHDIR)/gdt.h \
 	$(ARCHDIR)/interrupt.h \
 	$(ARCHDIR)/io.h \
-	$(ARCHDIR)/kmalloc.h \
 	$(ARCHDIR)/math.h \
 	$(ARCHDIR)/mem.h \
 	$(ARCHDIR)/page.h \

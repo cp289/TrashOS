@@ -2,7 +2,7 @@
  * page.c: Paging
  */
 
-#include "kmalloc.h"
+#include "alloc.h"
 #include "page.h"
 #include "mem.h"
 #include "std.h"

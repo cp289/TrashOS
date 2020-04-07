@@ -2,12 +2,12 @@
  * apic.c: Advanced Programmable Interrupt Controller
  */
 
+#include "alloc.h"
 #include "apic.h"
 #include "asm.h"
 #include "cpuid.h"
 #include "interrupt.h"
 #include "io.h"
-#include "kmalloc.h"
 #include "page.h"
 
 static void *lapic_base_vma;
