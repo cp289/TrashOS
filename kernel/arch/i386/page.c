@@ -23,15 +23,6 @@ void page_clear(uintptr_t vma)
     }
 }
 
-// Dynamically allocate new page table
-static uintptr_t page_table_new(void)
-{
-    uintptr_t table = align(kernel_heap_end_pma, PAGE_SIZE);
-    page_clear(table);
-    kernel_heap_end_pma = table + PAGE_SIZE;
-    return table;
-}
-
 static inline uintptr_t page_get_dir_idx(uintptr_t vma)
 {
     return vma >> 22;
@@ -57,11 +48,12 @@ void page_map(uintptr_t vma, uintptr_t pma)
 
     page_entry_t *table = page_get_table(vma);
 
+    // TODO THIS SHOULD NEVER HAPPEN:
     // Allocate new page table if necessary
     if (!(page_dir[page_dir_idx] & PAGE_PRESENT)) {
-        uintptr_t new_table = page_table_new();
-        table = (void*)new_table;
-        page_dir[page_dir_idx] = new_table | PAGE_WRITE | PAGE_PRESENT;
+        table = kalloc(&page_new, PAGE_SIZE, PAGE_SIZE);
+        uintptr_t table_pma = page_get_pma((uintptr_t)table);
+        page_dir[page_dir_idx] = table_pma | PAGE_WRITE | PAGE_PRESENT;
         table[page_table_idx] = pma;
     } else {
         table[page_table_idx] = (table[page_table_idx] & 0xfff) | pma;
@@ -169,5 +161,14 @@ void page_init_cleanup(void)
     for ( ; i < INIT_BSS_END; i += PAGE_SIZE) {
         page_clear(i);
         page_free(i);
+    }
+
+    // Allocate all kernel page tables
+    for (i = page_get_dir_idx(KERNEL_VMA); i < PAGE_ENTRIES; i++) {
+        if ( !(page_dir[i] & PAGE_PRESENT) ) {
+            page_entry_t *table = kalloc(&page_new, PAGE_SIZE, PAGE_SIZE);
+            page_table_lookup[i] = (uintptr_t)table;
+            page_dir[i] = page_get_pma((uintptr_t)table) | PAGE_PRESENT | PAGE_WRITE;
+        }
     }
 }
