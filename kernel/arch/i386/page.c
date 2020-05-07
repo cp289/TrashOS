@@ -3,6 +3,7 @@
  */
 
 #include "alloc.h"
+#include "asm.h"
 #include "page.h"
 #include "mem.h"
 #include "std.h"
@@ -74,37 +75,37 @@ static void * page_get_table(uintptr_t vma)
     return (void*)page_table_lookup[idx];
 }
 
-// Map virtual memory address (vma) to page at physical memory address (pma)
-void page_map(uintptr_t vma, uintptr_t pma)
+// Remap page VMA to different PMA without modifying flags
+void page_remap(uintptr_t vma, uintptr_t pma)
 {
-    const uintptr_t page_dir_idx = page_get_dir_idx(vma);
-    const uintptr_t page_table_idx = page_get_table_idx(vma);
-
+    const uintptr_t table_idx = page_get_table_idx(vma);
     page_entry_t *table = page_get_table(vma);
-
-    // TODO THIS SHOULD NEVER HAPPEN instead return an error code?
-    // Allocate new page table if necessary
-    if (!(page_dir[page_dir_idx] & PAGE_PRESENT)) {
-        table = kalloc(PAGE_GET_DEFAULT, PAGE_SIZE, PAGE_SIZE);
-        uintptr_t table_pma = page_get_pma((uintptr_t)table);
-        page_dir[page_dir_idx] = table_pma | PAGE_WRITE | PAGE_PRESENT;
-        table[page_table_idx] = pma;
-    } else {
-        table[page_table_idx] = (table[page_table_idx] & 0xfff) | pma;
-    }
+    table[table_idx] = (table[table_idx] & 0xfff) | pma;
+    invlpg(vma);
 }
 
-void page_map_flags(uintptr_t vma, uintptr_t pma, uintptr_t flags)
+// Set page table entry for VMA
+void page_set_entry(uintptr_t vma, page_entry_t entry)
 {
-    page_map(vma, pma);
-    page_set_flags(vma, flags);
+    page_entry_t *table = page_get_table(vma);
+    table[page_get_table_idx(vma)] = entry;
 }
 
-// Unmap page by zeroing its page table entry
+// Unmap page by clearing Present flag
 void page_unmap(uintptr_t vma)
+{
+    const uintptr_t table_idx = page_get_table_idx(vma);
+    page_entry_t *table = page_get_table(vma);
+    table[table_idx] = table[table_idx] & ~PAGE_PRESENT;
+    invlpg(vma);
+}
+
+// Unmap page by clearing entire page table entry
+void page_delete(uintptr_t vma)
 {
     page_entry_t *table = page_get_table(vma);
     table[page_get_table_idx(vma)] = (page_entry_t)0;
+    invlpg(vma);
 }
 
 void page_set_flags(uintptr_t vma, uintptr_t flags)

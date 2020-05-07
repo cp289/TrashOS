@@ -32,7 +32,7 @@ typedef union {
         uint32_t vip        : 1; // Virtual interrupt pending
         uint32_t id         : 1; // Identification flag
         uint32_t _reserved4 : 10;// Always zero
-    } field;
+    };
     uint32_t raw;
 } flags_reg_t;
 
@@ -138,6 +138,17 @@ static inline reg_t get_cr4(void)
         : // No clobbers
     );
     return val;
+}
+
+// Invalidate TLB entry
+static inline void invlpg(uintptr_t vma)
+{
+    asm (
+        "invlpg %[vma]\n\t"
+        : // No outputs
+        : [vma] "m" (vma)
+        : // No clobbers
+    );
 }
 
 // Get stack pointer

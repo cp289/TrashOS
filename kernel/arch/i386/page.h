@@ -119,15 +119,16 @@ static inline void page_enable(void)
 }
 
 void page_clear(uintptr_t pma);
+void page_delete(uintptr_t vma);
 void page_init_cleanup(void);
 void page_free(uintptr_t vma);
 uintptr_t page_get_entry(uintptr_t vma);
 uintptr_t page_get_flags(uintptr_t vma);
 uintptr_t page_get_pma(uintptr_t vma);
 bool page_is_present(uintptr_t vma);
-void page_map(uintptr_t vma, uintptr_t pma);
-void page_map_flags(uintptr_t vma, uintptr_t pma, uintptr_t flags);
 uintptr_t page_new(void);
+void page_remap(uintptr_t vma, uintptr_t pma);
+void page_set_entry(uintptr_t vma, page_entry_t entry);
 void page_set_flags(uintptr_t vma, uintptr_t flags);
 void page_table_map(uintptr_t table_vma, uintptr_t vma, uintptr_t flags);
 void page_table_unmap(uintptr_t vma);

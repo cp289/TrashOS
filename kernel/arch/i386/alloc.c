@@ -171,7 +171,7 @@ extend_heap:
          page_vma < old_ctxt_end + bytes + sizeof(alloc_chunk_desc_t);
          page_vma += PAGE_SIZE) {
         uintptr_t page_pma = get_page_pma();
-        page_map_flags(page_vma, page_pma, PAGE_WRITE | PAGE_PRESENT);
+        page_set_entry(page_vma, page_pma | PAGE_WRITE | PAGE_PRESENT);
     }
 
     // Initialize chunk descriptors
@@ -246,7 +246,7 @@ alloc_ctxt_t alloc_new_heap(uintptr_t heap_start)
 
     uintptr_t first_chunk_addr = align(heap_start, KM_MIN_ALLOC_SIZE);
     if (!page_is_present(first_chunk_addr)) {
-        page_map_flags(first_chunk_addr, page_new(), PAGE_WRITE | PAGE_PRESENT);
+        page_set_entry(first_chunk_addr, page_new() | PAGE_WRITE | PAGE_PRESENT);
     }
     alloc_chunk_desc_t * first_chunk = (void*)first_chunk_addr;
     first_chunk->size_prev = 0;
