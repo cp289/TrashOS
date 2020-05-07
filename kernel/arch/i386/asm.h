@@ -72,7 +72,7 @@ static inline void sti(void)
 static inline reg_t get_cr0(void)
 {
     reg_t val;
-    asm (
+    asm volatile (
         "movl %%cr0, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
@@ -85,7 +85,7 @@ static inline reg_t get_cr0(void)
 static inline reg_t get_cr1(void)
 {
     reg_t val;
-    asm (
+    asm volatile (
         "movl %%cr1, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
@@ -97,7 +97,7 @@ static inline reg_t get_cr1(void)
 static inline reg_t get_cr2(void)
 {
     reg_t val;
-    asm (
+    asm volatile (
         "movl %%cr2, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
@@ -109,7 +109,7 @@ static inline reg_t get_cr2(void)
 static inline reg_t get_cr3(void)
 {
     reg_t val;
-    asm (
+    asm volatile (
         "movl %%cr3, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
@@ -118,10 +118,20 @@ static inline reg_t get_cr3(void)
     return val;
 }
 
+static inline void set_cr3(reg_t val)
+{
+    asm (
+        "movl %[val], %%cr3\n\t"
+        : // No outputs
+        : [val] "r" (val)
+        : // No clobbers
+    );
+}
+
 static inline reg_t get_cr4(void)
 {
     reg_t val;
-    asm (
+    asm volatile (
         "movl %%cr4, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
@@ -134,13 +144,35 @@ static inline reg_t get_cr4(void)
 static inline reg_t get_sp(void)
 {
     reg_t val;
-    asm (
+    asm volatile (
         "movl %%esp, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
         : // No clobbers
     );
     return val;
+}
+
+// Set stack pointer
+static inline void set_sp(uintptr_t val)
+{
+    asm (
+        "movl %[val], %%esp\n\t"
+        : // No outputs
+        : [val] "rm" (val)
+        : // No clobbers
+    );
+}
+
+static inline void set_flags(flags_reg_t flags)
+{
+    asm (
+        "pushl %0\n\t"
+        "popf\n\t"
+        : // No outputs
+        : "r" (flags.raw)
+        : // No clobbers
+    );
 }
 
 static inline flags_reg_t get_flags(void)
@@ -158,11 +190,11 @@ static inline flags_reg_t get_flags(void)
 
 // Segment registers
 
-static inline reg_t get_cs(void)
+static inline uint16_t get_cs(void)
 {
-    reg_t val;
-    asm (
-        "movl %%cs, %[val]\n\t"
+    uint16_t val;
+    asm volatile (
+        "movw %%cs, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
         : // No clobbers
@@ -170,11 +202,11 @@ static inline reg_t get_cs(void)
     return val;
 }
 
-static inline reg_t get_ds(void)
+static inline uint16_t get_ds(void)
 {
-    reg_t val;
-    asm (
-        "movl %%ds, %[val]\n\t"
+    uint16_t val;
+    asm volatile (
+        "movw %%ds, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
         : // No clobbers
@@ -182,11 +214,11 @@ static inline reg_t get_ds(void)
     return val;
 }
 
-static inline reg_t get_es(void)
+static inline uint16_t get_es(void)
 {
-    reg_t val;
-    asm (
-        "movl %%es, %[val]\n\t"
+    uint16_t val;
+    asm volatile (
+        "movw %%es, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
         : // No clobbers
@@ -194,11 +226,11 @@ static inline reg_t get_es(void)
     return val;
 }
 
-static inline reg_t get_fs(void)
+static inline uint16_t get_fs(void)
 {
-    reg_t val;
-    asm (
-        "movl %%fs, %[val]\n\t"
+    uint16_t val;
+    asm volatile (
+        "movw %%fs, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
         : // No clobbers
@@ -206,11 +238,11 @@ static inline reg_t get_fs(void)
     return val;
 }
 
-static inline reg_t get_gs(void)
+static inline uint16_t get_gs(void)
 {
-    reg_t val;
-    asm (
-        "movl %%gs, %[val]\n\t"
+    uint16_t val;
+    asm volatile (
+        "movw %%gs, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
         : // No clobbers
@@ -218,16 +250,99 @@ static inline reg_t get_gs(void)
     return val;
 }
 
-static inline reg_t get_ss(void)
+static inline uint16_t get_ss(void)
 {
-    reg_t val;
-    asm (
-        "movl %%ss, %[val]\n\t"
+    uint16_t val;
+    asm volatile (
+        "movw %%ss, %[val]\n\t"
         : [val] "=rm" (val)
         : // No inputs
         : // No clobbers
     );
     return val;
+}
+
+static inline void set_cs(uint16_t cs)
+{
+    asm volatile (
+        "pushl  %[val]\n\t"
+        "pushl  $set_cs_%=\n\t"
+        "lret\n\t"
+        "set_cs_%=:\n\t"
+        : // No outputs
+        : [val] "rm" ((uint32_t)cs)
+        : // No clobbers
+    );
+}
+
+static inline void set_ds(uint16_t ds)
+{
+    asm (
+        "movw %[val], %%ds\n\t"
+        : // No outputs
+        : [val] "rm" (ds)
+        : // No clobbers
+    );
+}
+
+static inline void set_es(uint16_t es)
+{
+    asm (
+        "movw %[val], %%es\n\t"
+        : // No outputs
+        : [val] "rm" (es)
+        : // No clobbers
+    );
+}
+
+static inline void set_fs(uint16_t fs)
+{
+    asm (
+        "movw %[val], %%fs\n\t"
+        : // No outputs
+        : [val] "rm" (fs)
+        : // No clobbers
+    );
+}
+
+static inline void set_gs(uint16_t gs)
+{
+    asm (
+        "movw %[val], %%gs\n\t"
+        : // No outputs
+        : [val] "rm" (gs)
+        : // No clobbers
+    );
+}
+
+static inline void set_ss(uint16_t ss)
+{
+    asm (
+        "movw %[val], %%ss\n\t"
+        : // No outputs
+        : [val] "rm" (ss)
+        : // No clobbers
+    );
+}
+
+static inline void set_tr(uint16_t tr)
+{
+    asm (
+        "ltr %0\n\t"
+        : // No outputs
+        : "r" (tr)
+        : // No clobbers
+    );
+}
+
+static inline void load_gdt(uint64_t *selector)
+{
+    asm (
+        "lgdt    (%0)\n\t"
+        : // No ouptuts
+        : "r" (selector)
+        : // No clobbers
+    );
 }
 
 // MSR
