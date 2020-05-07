@@ -10,15 +10,15 @@ SECTIONS
      * The following creates a virtual higher-half address space, leaving 512M
      * for the kernel.
      */
-    _KERNEL_LMA = 1M;
-    _KERNEL_VMA = 0xE0000000;
+    _KERNEL_START_LMA = 1M;
+    _KERNEL_START_VMA = 0xE0000000;
 
     /**
      * Each section is aligned to a 4K (page) boundary. The AT function
-     * instructs the linker to load each section starting at KERNEL_LMA.
+     * instructs the linker to load each section starting at KERNEL_START_LMA.
      */
 
-    . = _KERNEL_LMA;
+    . = _KERNEL_START_LMA;
 
     .init ALIGN(4K) :
     {
@@ -53,14 +53,14 @@ SECTIONS
 
 
     /* Physical address offset for start of kernel */
-    /* _LMA_OFFSET = _KERNEL_LMA + _INIT_SIZE + _INIT_BSS_SIZE;*/
+    /* _LMA_OFFSET = _KERNEL_START_LMA + _INIT_SIZE + _INIT_BSS_SIZE;*/
     _LMA_OFFSET = _INIT_BSS_END;
 
-    . = _KERNEL_VMA;
+    . = _KERNEL_START_VMA;
 
-    .text ALIGN(4K) : AT(ADDR(.text) - _KERNEL_VMA + _LMA_OFFSET)
+    .text ALIGN(4K) : AT(ADDR(.text) - _KERNEL_START_VMA + _LMA_OFFSET)
     {
-        _TEXT_START = ABSOLUTE(.);
+        _TEXT_START_VMA = ABSOLUTE(.);
 
         EXCLUDE_FILE (
             *kernel/arch/i386/init.o
@@ -68,13 +68,13 @@ SECTIONS
             *kernel/arch/i386/init_vga.o
         ) *(.text)
 
-        _TEXT_END = ALIGN(4K);
-        _TEXT_SIZE = _TEXT_END - _TEXT_START;
+        _TEXT_END_VMA = ALIGN(4K);
+        _TEXT_SIZE = _TEXT_END_VMA - _TEXT_START_VMA;
     }
 
-    .rodata ALIGN(4K) : AT(ADDR(.rodata) - _KERNEL_VMA + _LMA_OFFSET)
+    .rodata ALIGN(4K) : AT(ADDR(.rodata) - _KERNEL_START_VMA + _LMA_OFFSET)
     {
-        _RODATA_START = ABSOLUTE(.);
+        _RODATA_START_VMA = ABSOLUTE(.);
 
         EXCLUDE_FILE (
             *kernel/arch/i386/init.o
@@ -82,13 +82,13 @@ SECTIONS
             *kernel/arch/i386/init_vga.o
         ) *(.rodata*)
 
-        _RODATA_END = ALIGN(4K);
-        _RODATA_SIZE = _RODATA_END - _RODATA_START;
+        _RODATA_END_VMA = ALIGN(4K);
+        _RODATA_SIZE = _RODATA_END_VMA - _RODATA_START_VMA;
     }
 
-    .data ALIGN(4K) : AT(ADDR(.data) - _KERNEL_VMA + _LMA_OFFSET)
+    .data ALIGN(4K) : AT(ADDR(.data) - _KERNEL_START_VMA + _LMA_OFFSET)
     {
-        _DATA_START = ABSOLUTE(.);
+        _DATA_START_VMA = ABSOLUTE(.);
 
         EXCLUDE_FILE (
             *kernel/arch/i386/init.o
@@ -96,13 +96,13 @@ SECTIONS
             *kernel/arch/i386/init_vga.o
         ) *(.data)
 
-        _DATA_END = ALIGN(4K);
-        _DATA_SIZE = _DATA_END - _DATA_START;
+        _DATA_END_VMA = ALIGN(4K);
+        _DATA_SIZE = _DATA_END_VMA - _DATA_START_VMA;
     }
 
-    .bss ALIGN(4K) : AT(ADDR(.bss) - _KERNEL_VMA + _LMA_OFFSET)
+    .bss ALIGN(4K) : AT(ADDR(.bss) - _KERNEL_START_VMA + _LMA_OFFSET)
     {
-        _BSS_START = ABSOLUTE(.);
+        _BSS_START_VMA = ABSOLUTE(.);
 
         EXCLUDE_FILE (
             *kernel/arch/i386/init.o
@@ -115,10 +115,10 @@ SECTIONS
             *kernel/arch/i386/init_vga.o
         ) *(.bss)
 
-        _BSS_END = ALIGN(4K);
-        _BSS_SIZE = _BSS_END - _BSS_START;
+        _BSS_END_VMA = ALIGN(4K);
+        _BSS_SIZE = _BSS_END_VMA - _BSS_START_VMA;
     }
 
-    _KERNEL_END = ALIGN(4K);
-    _KERNEL_SIZE = _KERNEL_END - _KERNEL_VMA;
+    _KERNEL_END_VMA = ALIGN(4K);
+    _KERNEL_SIZE = _KERNEL_END_VMA - _KERNEL_START_VMA;
 }

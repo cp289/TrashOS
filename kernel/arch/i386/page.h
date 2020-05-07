@@ -80,8 +80,9 @@ typedef uintptr_t page_entry_t;
 
 // Structure for the page directory and lookup table in init memory section
 typedef struct {
-    page_entry_t init_page_dir[PAGE_ENTRIES];
-    page_entry_t init_page_table_lookup[PAGE_ENTRIES];
+    page_entry_t page_dir[PAGE_ENTRIES];
+    page_entry_t page_table_lookup[PAGE_ENTRIES];
+    page_entry_t stack_page[PAGE_ENTRIES];
 } init_page_struct_t;
 
 // Linked list node for page free list
@@ -128,6 +129,9 @@ void page_map(uintptr_t vma, uintptr_t pma);
 void page_map_flags(uintptr_t vma, uintptr_t pma, uintptr_t flags);
 uintptr_t page_new(void);
 void page_set_flags(uintptr_t vma, uintptr_t flags);
+void page_table_map(uintptr_t table_vma, uintptr_t vma, uintptr_t flags);
+void page_table_unmap(uintptr_t vma);
+void page_set_dir_entry(uintptr_t idx, uintptr_t table_vma, page_entry_t entry);
 void page_unmap(uintptr_t vma);
 
 // This is the default function for obtaining new pages

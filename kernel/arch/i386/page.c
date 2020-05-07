@@ -14,6 +14,11 @@ uintptr_t kernel_heap_end_vma;
 
 static page_free_node_t *page_free_list = NULL;
 
+// Static functions
+static inline uintptr_t page_get_dir_idx(uintptr_t vma);
+static inline uintptr_t page_get_table_idx(uintptr_t vma);
+static void * page_get_table(uintptr_t vma);
+
 // Erase page (overwrite with zeros)
 void page_clear(uintptr_t vma)
 {
@@ -21,6 +26,36 @@ void page_clear(uintptr_t vma)
     for (uintptr_t i = 0; i < PAGE_SIZE / sizeof(*entry); i++) {
         entry[i] = (uint64_t)0;
     }
+}
+
+// Map page table
+void page_table_map(uintptr_t table_vma, uintptr_t vma, uintptr_t flags)
+{
+    const uintptr_t idx = page_get_dir_idx(vma);
+    page_table_lookup[idx] = table_vma;
+    page_dir[idx] = page_get_pma(table_vma) | flags;
+}
+
+// Set page directory entry directly by directory index
+void page_set_dir_entry(uintptr_t idx, uintptr_t table_vma, page_entry_t entry)
+{
+    page_table_lookup[idx] = table_vma;
+    page_dir[idx] = entry;
+}
+
+// Unmap page table (zero out page directory entry)
+void page_table_unmap(uintptr_t vma)
+{
+    const uintptr_t idx = page_get_dir_idx(vma);
+    page_table_lookup[idx] = (page_entry_t)0;
+    page_dir[idx] = (page_entry_t)0;
+}
+
+// Unmap page table by directory index
+void page_table_unmap_idx(uintptr_t idx)
+{
+    page_table_lookup[idx] = (page_entry_t)0;
+    page_dir[idx] = (page_entry_t)0;
 }
 
 static inline uintptr_t page_get_dir_idx(uintptr_t vma)
@@ -36,8 +71,7 @@ static inline uintptr_t page_get_table_idx(uintptr_t vma)
 static void * page_get_table(uintptr_t vma)
 {
     const uintptr_t idx = page_get_dir_idx(vma);
-    void * ret = (void*)page_table_lookup[idx];
-    return ret;
+    return (void*)page_table_lookup[idx];
 }
 
 // Map virtual memory address (vma) to page at physical memory address (pma)
@@ -48,10 +82,10 @@ void page_map(uintptr_t vma, uintptr_t pma)
 
     page_entry_t *table = page_get_table(vma);
 
-    // TODO THIS SHOULD NEVER HAPPEN:
+    // TODO THIS SHOULD NEVER HAPPEN instead return an error code?
     // Allocate new page table if necessary
     if (!(page_dir[page_dir_idx] & PAGE_PRESENT)) {
-        table = kalloc(&page_new, PAGE_SIZE, PAGE_SIZE);
+        table = kalloc(PAGE_GET_DEFAULT, PAGE_SIZE, PAGE_SIZE);
         uintptr_t table_pma = page_get_pma((uintptr_t)table);
         page_dir[page_dir_idx] = table_pma | PAGE_WRITE | PAGE_PRESENT;
         table[page_table_idx] = pma;
@@ -81,7 +115,7 @@ void page_set_flags(uintptr_t vma, uintptr_t flags)
 }
 
 // Return page table entry for vma
-uintptr_t page_get_entry(uintptr_t vma)
+page_entry_t page_get_entry(uintptr_t vma)
 {
     page_entry_t *table = page_get_table(vma);
     return table[page_get_table_idx(vma)];
@@ -122,7 +156,7 @@ uintptr_t page_new(void)
 
 bool page_is_present(uintptr_t vma)
 {
-    return page_get_pma(vma) & PAGE_PRESENT;
+    return (bool)(page_get_entry(vma) & PAGE_PRESENT);
 }
 
 // Unmap page and add its PMA to the free list
@@ -164,9 +198,9 @@ void page_init_cleanup(void)
     }
 
     // Allocate all kernel page tables
-    for (i = page_get_dir_idx(KERNEL_VMA); i < PAGE_ENTRIES; i++) {
+    for (i = page_get_dir_idx(KERNEL_START_VMA); i < PAGE_ENTRIES; i++) {
         if ( !(page_dir[i] & PAGE_PRESENT) ) {
-            page_entry_t *table = kalloc(&page_new, PAGE_SIZE, PAGE_SIZE);
+            page_entry_t *table = kalloc(PAGE_GET_DEFAULT, PAGE_SIZE, PAGE_SIZE);
             page_table_lookup[i] = (uintptr_t)table;
             page_dir[i] = page_get_pma((uintptr_t)table) | PAGE_PRESENT | PAGE_WRITE;
         }
