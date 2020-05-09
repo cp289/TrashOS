@@ -16,8 +16,6 @@ typedef uint8_t vga_color_t;
 
 #define VGA_HEIGHT_DEFAULT  25
 #define VGA_WIDTH_DEFAULT   80
-extern size_t VGA_HEIGHT;
-extern size_t VGA_WIDTH;
 
 // Hardware text mode color constants
 enum {
@@ -45,6 +43,7 @@ void vga_clear(void);
 void vga_map_buffer(uintptr_t new_buffer);
 void vga_putc(char c);
 void vga_puts(const char *data);
+void vga_reset(void);
 void vga_set_position(size_t row, size_t col);
 void vga_write(const char *data, size_t size);
 
