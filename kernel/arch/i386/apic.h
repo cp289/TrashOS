@@ -163,6 +163,7 @@ typedef union {
 } apic_lvt_reg_t;
 
 void apic_init(void);
-void lapic_eoi(void);
+void lapic_send_eoi(void);
+apic_lvt_reg_t lapic_get_esr(void);
 
 #endif // _KERNEL_APIC_H

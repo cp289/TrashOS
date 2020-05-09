@@ -30,8 +30,10 @@ KOBJS=\
 	$(ARCHDIR)/gdt.o \
 	$(ARCHDIR)/init.o \
 	$(ARCHDIR)/interrupt.o \
+	$(ARCHDIR)/int_asm.o \
 	$(ARCHDIR)/kernel.o \
 	$(ARCHDIR)/printk.o \
+	$(ARCHDIR)/proc.o \
 	$(ARCHDIR)/multiboot2.o \
 	$(ARCHDIR)/page.o \
 	$(ARCHDIR)/vga.o \
@@ -49,6 +51,7 @@ KHDRS=\
 	$(ARCHDIR)/math.h \
 	$(ARCHDIR)/mem.h \
 	$(ARCHDIR)/page.h \
+	$(ARCHDIR)/proc.h \
 	$(ARCHDIR)/std.h \
 	$(ARCHDIR)/string.h \
 	$(ARCHDIR)/vga.h \

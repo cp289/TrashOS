@@ -22,7 +22,7 @@ typedef union {
         uint32_t ief        : 1; // Interrupt enable flag
         uint32_t df         : 1; // ??
         uint32_t of         : 1; // ??
-        uint32_t iopl       : 2; // I/O Privelege Level
+        uint32_t iopl       : 2; // I/O Privilege Level
         uint32_t nt         : 1; // Nested task flag
         uint32_t _reserved3 : 1; // Always 1
         uint32_t rf         : 1; // Resume flag

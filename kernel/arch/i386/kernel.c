@@ -10,6 +10,7 @@
 #include "interrupt.h"
 #include "io.h"
 #include "page.h"
+#include "proc.h"
 #include "std.h"
 #include "vga.h"
 
@@ -30,15 +31,13 @@ void kernel_main(void)
      * NOTE: Interrupt gates require referencing memory descriptors, so the GDT
      * must be configured and loaded before the IDT
      */
+    vga_clear();
     gdt_init();
     idt_init();
     page_init_cleanup();
     apic_init();
-
-    // TODO call a scheduling routine that does something like this
-    sti();
-    while (1)
-        halt();
+    proc_init();
+    proc_loop();
 
     char id_str[3 * sizeof(reg_t) + 1];
     size_t max_size;

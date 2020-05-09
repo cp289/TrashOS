@@ -4,15 +4,16 @@
 
 #include "apic.h"
 #include "asm.h"
+#include "gdt.h"
 #include "interrupt.h"
 #include "io.h"
+#include "proc.h"
 
 static idt_descriptor_t idt[IDT_SIZE];
 
 static uint64_t idtr;
 
-// TODO Is this string table necessary? Interrupt vectors numbers don't seem to
-// be accessible in code.
+// TODO delete this
 char *interrupt_string[] = {
     "Divide Error",
     "Debug Exception",
@@ -48,12 +49,11 @@ char *interrupt_string[] = {
     "Intel Reserved (31)",
 };
 
-// TODO Define an handler for each of the above architecture-defined interrupts
-
 // Handle generic interrupt
 INTERRUPT handle_interrupt(interrupt_frame_t *ctxt)
 {
     printk("INT: IP: %p CS: %p FLAGS: %p\n", ctxt->ip, ctxt->cs, ctxt->flags);
+    halt();
 }
 
 // Handle generic exception (has error code)
@@ -61,122 +61,133 @@ INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
 {
     printk("EXC: IP: %p CS: %p FLAGS: %p ERROR: %u\n", ctxt->ip, ctxt->cs,
             ctxt->flags, error_code);
+    halt();
 }
 
-// Possible causes for page faults
-// NOTE: some of the below causes are impossible
-enum {
-    SUPERVISOR_NOT_PRESENT = 0,
-    SUPERVISOR_VIOLATION,
-    SUPERVISOR_WRITE_NOT_PRESENT,
-    SUPERVISOR_WRITE_VIOLATION,
-    USER_NOT_PRESENT,
-    USER_VIOLATION,
-    USER_WRITE_NOT_PRESENT,
-    USER_WRITE_VIOLATION,
-    RESERVED_SUPERVISOR_NOT_PRESENT,
-    RESERVED_SUPERVISOR_VIOLATION,
-    RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
-    RESERVED_SUPERVISOR_WRITE_VIOLATION,
-    RESERVED_USER_NOT_PRESENT,
-    RESERVED_USER_VIOLATION,
-    RESERVED_USER_WRITE_NOT_PRESENT,
-    RESERVED_USER_WRITE_VIOLATION,
-    FETCH_SUPERVISOR_NOT_PRESENT,
-    FETCH_SUPERVISOR_VIOLATION,
-    FETCH_SUPERVISOR_WRITE_NOT_PRESENT,
-    FETCH_SUPERVISOR_WRITE_VIOLATION,
-    FETCH_USER_NOT_PRESENT,
-    FETCH_USER_VIOLATION,
-    FETCH_USER_WRITE_NOT_PRESENT,
-    FETCH_USER_WRITE_VIOLATION,
-    FETCH_RESERVED_SUPERVISOR_NOT_PRESENT,
-    FETCH_RESERVED_SUPERVISOR_VIOLATION,
-    FETCH_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
-    FETCH_RESERVED_SUPERVISOR_WRITE_VIOLATION,
-    FETCH_RESERVED_USER_NOT_PRESENT,
-    FETCH_RESERVED_USER_VIOLATION,
-    FETCH_RESERVED_USER_WRITE_NOT_PRESENT,
-    FETCH_RESERVED_USER_WRITE_VIOLATION,
-    PROTECTION_SUPERVISOR_NOT_PRESENT,
-    PROTECTION_SUPERVISOR_VIOLATION,
-    PROTECTION_SUPERVISOR_WRITE_NOT_PRESENT,
-    PROTECTION_SUPERVISOR_WRITE_VIOLATION,
-    PROTECTION_USER_NOT_PRESENT,
-    PROTECTION_USER_VIOLATION,
-    PROTECTION_USER_WRITE_NOT_PRESENT,
-    PROTECTION_USER_WRITE_VIOLATION,
-    PROTECTION_RESERVED_SUPERVISOR_NOT_PRESENT,
-    PROTECTION_RESERVED_SUPERVISOR_VIOLATION,
-    PROTECTION_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
-    PROTECTION_RESERVED_SUPERVISOR_WRITE_VIOLATION,
-    PROTECTION_RESERVED_USER_NOT_PRESENT,
-    PROTECTION_RESERVED_USER_VIOLATION,
-    PROTECTION_RESERVED_USER_WRITE_NOT_PRESENT,
-    PROTECTION_RESERVED_USER_WRITE_VIOLATION,
-    PROTECTION_FETCH_SUPERVISOR_NOT_PRESENT,
-    PROTECTION_FETCH_SUPERVISOR_VIOLATION,
-    PROTECTION_FETCH_SUPERVISOR_WRITE_NOT_PRESENT,
-    PROTECTION_FETCH_SUPERVISOR_WRITE_VIOLATION,
-    PROTECTION_FETCH_USER_NOT_PRESENT,
-    PROTECTION_FETCH_USER_VIOLATION,
-    PROTECTION_FETCH_USER_WRITE_NOT_PRESENT,
-    PROTECTION_FETCH_USER_WRITE_VIOLATION,
-    PROTECTION_FETCH_RESERVED_SUPERVISOR_NOT_PRESENT,
-    PROTECTION_FETCH_RESERVED_SUPERVISOR_VIOLATION,
-    PROTECTION_FETCH_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
-    PROTECTION_FETCH_RESERVED_SUPERVISOR_WRITE_VIOLATION,
-    PROTECTION_FETCH_RESERVED_USER_NOT_PRESENT,
-    PROTECTION_FETCH_RESERVED_USER_VIOLATION,
-    PROTECTION_FETCH_RESERVED_USER_WRITE_NOT_PRESENT,
-    PROTECTION_FETCH_RESERVED_USER_WRITE_VIOLATION,
-};
-
-// TODO move to header file
-typedef union
+// Interrupt 0
+INTERRUPT handle_divide_error(interrupt_frame_t *frame)
 {
-    uintptr_t raw;
-    struct {
-        uintptr_t violation     : 1; // 0: non-present page, 1: protection violation
-        uintptr_t write         : 1; // Caused by a write
-        uintptr_t user_mode     : 1; // Caused in user_mode
-        uintptr_t reserved      : 1; // Caused by RSVD flag
-        uintptr_t instruction   : 1; // Caused by instruction fetch
-        uintptr_t protection    : 1; // Caused by protection-key violation
-        uintptr_t _reserved0    : 9;
-        uintptr_t sgx           : 1; // Caused by violation of SGX-specific access control
-        uintptr_t _reserved1    : 16;
-    } bits;
-} error_code_page_t;
+    printk("Divide Error Exception: ip: %p", frame->ip);
+    halt();
+}
 
-// Handle page fault exception
+// Interrupt 1
+INTERRUPT handle_debug(interrupt_frame_t *frame)
+{
+    printk("Debug Exception: ip: %p\n", frame->ip);
+    halt();
+}
+
+// Interrupt 2
+INTERRUPT handle_nmi_interrupt(interrupt_frame_t *frame)
+{
+    printk("NMI Interrupt: ip: %p\n", frame->ip);
+    halt();
+}
+
+// Interrupt 3
+INTERRUPT handle_breakpoint(interrupt_frame_t *frame)
+{
+    printk("Breakpoint Exception: ip: %p\n", frame->ip);
+    halt();
+}
+
+// Interrupt 4
+INTERRUPT handle_overflow(interrupt_frame_t *frame)
+{
+    printk("Overflow Exception: ip: %p\n", frame->ip);
+    halt();
+}
+
+// Interrupt 5
+INTERRUPT handle_bound_range_exceeded(interrupt_frame_t *frame)
+{
+    printk("BOUND Range Exceeded Exception: ip: %p\n", frame->ip);
+    halt();
+}
+
+// Interrupt 6
+INTERRUPT handle_invalid_opcode(interrupt_frame_t *frame)
+{
+    printk("Invalid Opcode Exception: ip: %p\n", frame->ip);
+    halt();
+}
+
+// Interrupt 7
+INTERRUPT handle_device_not_available(interrupt_frame_t *frame)
+{
+    printk("Device Not Available Exception: ip: %p\n", frame->ip);
+    halt();
+}
+
+// Interrupt 8
+INTERRUPT handle_double_fault(interrupt_frame_t *frame, uintptr_t error)
+{
+    // NOTE error is always zero
+    printk("Double Fault Exception: ip: %p, error: %p\n", frame->ip, error);
+    halt();
+}
+
+// Interrupt 9
+INTERRUPT handle_coprocessor_segment_overrun(interrupt_frame_t *frame)
+{
+    printk("Coprocessor Segment Overrun: ip: %p\n", frame->ip);
+    halt();
+}
+
+// Interrupt 10
+INTERRUPT handle_invalid_tss(interrupt_frame_t *frame, uintptr_t error)
+{
+    printk("Invalid TSS Exception: ip: %p, error: %p\n", frame->ip, error);
+    halt();
+}
+
+// Interrupt 11
+INTERRUPT handle_segment_not_present(interrupt_frame_t *frame, uintptr_t error)
+{
+    printk("Segment Not present: ip: %p, error: %p\n", frame->ip, error);
+    halt();
+}
+
+// Interrupt 12
+INTERRUPT handle_stack_fault(interrupt_frame_t *frame, uintptr_t error)
+{
+    printk("Stack Fault Exception: ip: %p, error: %p\n", frame->ip, error);
+    halt();
+}
+
+// Interrupt 13
+INTERRUPT handle_general_protection(interrupt_frame_t *frame, uintptr_t error)
+{
+    printk("General Protection Exception: ip: %p, error: %p\n", frame->ip, error);
+    halt();
+}
+
+// Interrupt 14
 INTERRUPT handle_page_fault(interrupt_frame_t *ctxt, uintptr_t error_raw)
 {
     error_code_page_t error = { .raw = error_raw };
 
-    if (error.bits.user_mode) {
-        printk("USER PAGE FAULT: at %p, error: %p\n", ctxt->ip, error);
+    reg_t cr2 = get_cr2();
+
+    if (error.user_mode) {
+        printk("USER PAGE FAULT (%p): ip: %p, error: %p\n", cr2, ctxt->ip, error);
     } else {
-        if (!error.bits.violation) {
-            printk("SUPERVISOR PAGE ABSENT FROM %p: at %p, error: %p, sp: %p\n", get_cr2(), ctxt->ip, error, get_sp());
+        if (!error.violation) {
+            printk("SUPERVISOR PAGE ABSENT (%p): ip: %p, error: %p, sp: %p\n",
+                   cr2, ctxt->ip, error, get_sp());
         } else {
-            printk("UNKNOWN PAGE FAULT: at %p, error: %p\n", ctxt->ip, error);
+            printk("UNKNOWN PAGE FAULT (%p): ip: %p, error: %p\n", cr2,
+                   ctxt->ip, error);
         }
     }
     halt();
 }
 
-// TODO call scheduling routine
-INTERRUPT handle_lapic_timer(volatile interrupt_frame_t *frame)
-{
-    (void)frame;
-    printk("T");
-    lapic_eoi();
-}
-
 INTERRUPT handle_unknown(interrupt_frame_t *frame)
 {
     printk("UNKNOWN INTERRUPT! %p", frame);
+    halt();
 }
 
 static inline idt_descriptor_t
@@ -192,59 +203,104 @@ idt_descriptor(void (*handler)(), reg_t sel, int type, int dpl)
     };
 }
 
-static void idt_init_default(void)
+void int_handle_proc_switch(void);  // See int_asm.s for implementation
+
+static void idt_init_vectors(void)
 {
     // Initialize IDT with default handlers
-
-    // TODO Make segment selectors available as constants in a header file
-    // Are segment ring levels the only way to provide security in this case?
-
-    /**
-     * TODO currently, we simply use the current (privilege 0) code selector for
-     * all interrupt gates. This may not be desirable.
-     */
-    // TODO change DPL values to constants?
     for (int i = 0; i < IDT_SIZE; i++) {
         switch (i) {
-            case 14:
-                idt[i] = idt_descriptor(&handle_page_fault, get_cs(),
-                                        IDT_GATE_INTERRUPT32, 0);
-                break;
-            case 8: case 10: case 11: case 12: case 13: case 17:
-                idt[i] = idt_descriptor(&handle_exception, get_cs(),
-                                        IDT_GATE_INTERRUPT32, 0);
-                break;
-            default:
-                idt[i] = idt_descriptor(&handle_interrupt, get_cs(),
-                                        IDT_GATE_INTERRUPT32, 0);
+        case 0:
+            idt[i] = idt_descriptor(&handle_divide_error, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 1:
+            idt[i] = idt_descriptor(&handle_debug, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 2:
+            idt[i] = idt_descriptor(&handle_nmi_interrupt, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 3:
+            idt[i] = idt_descriptor(&handle_breakpoint, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 4:
+            idt[i] = idt_descriptor(&handle_overflow, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 5:
+            idt[i] = idt_descriptor(&handle_bound_range_exceeded,
+                                    GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
+                                    RING0);
+            break;
+        case 6:
+            idt[i] = idt_descriptor(&handle_invalid_opcode, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 7:
+            idt[i] = idt_descriptor(&handle_device_not_available,
+                                    GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
+                                    RING0);
+            break;
+        case 8:
+            idt[i] = idt_descriptor(&handle_double_fault, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 9:
+            idt[i] = idt_descriptor(&handle_coprocessor_segment_overrun,
+                                    GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
+                                    RING0);
+            break;
+        case 10:
+            idt[i] = idt_descriptor(&handle_invalid_tss, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 11:
+            idt[i] = idt_descriptor(&handle_segment_not_present,
+                                    GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
+                                    RING0);
+            break;
+        case 12:
+            idt[i] = idt_descriptor(&handle_stack_fault, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 13:
+            idt[i] = idt_descriptor(&handle_general_protection,
+                                    GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
+                                    RING0);
+            break;
+        case 14:
+            idt[i] = idt_descriptor(&handle_page_fault, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case 17:
+            idt[i] = idt_descriptor(&handle_exception, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        case IDT_VECTOR_TIMER:
+            idt[i] = idt_descriptor(&int_handle_proc_switch, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
+            break;
+        default:
+            idt[i] = idt_descriptor(&handle_unknown, GDT_SEL_CODE_PL0,
+                                    IDT_GATE_INTERRUPT32, RING0);
         }
     }
-}
-
-// Setup timing interrupts
-static void idt_init_lapic_timer(void)
-{
-    idt[IDT_VECTOR_TIMER] = (idt_descriptor_t) {
-        .offset_lo = (uintptr_t)(&handle_lapic_timer) & 0xffff,
-        .offset_hi = (uintptr_t)(&handle_lapic_timer) >> 16,
-        .selector = get_cs(),
-        .type = IDT_GATE_INTERRUPT32,
-        .dpl = 0,
-        .present = 1,
-    };
 }
 
 // Tell processor where IDT is
 static inline void idt_load(void)
 {
-    // Set IDTR register
-
     // IDTR Register:
     //  bits 47:16  IDT base address
     //  bits 15:0   IDT limit (byte size of IDT)
 
+    // Set IDTR register
     idtr = ((uint64_t)(uintptr_t)idt << 16) | (sizeof idt - 1);
 
+    // Load IDTR register
     asm (
         "lidt    (%0)\n\t"
         : // No outputs
@@ -255,7 +311,6 @@ static inline void idt_load(void)
 
 void idt_init(void)
 {
-    idt_init_default();
-    idt_init_lapic_timer();
+    idt_init_vectors();
     idt_load();
 }

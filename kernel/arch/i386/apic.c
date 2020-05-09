@@ -12,16 +12,11 @@
 
 static void *lapic_base_vma;
 static uintptr_t lapic_base_pma;
+static volatile apic_lvt_reg_t *lapic_reg;
 static bool get_page_first_run = true;
 
 static void lapic_timer_init(uint32_t period)
 {
-    apic_lvt_reg_t volatile *reg = lapic_base_vma;
-
-    printk("lapic_timer_init: LAPIC base: %p, pma: %p\n", reg, page_get_pma((uintptr_t)reg));
-    apic_lvt_reg_t ver = reg[APIC_VER_IDX];
-    printk("lapic_timer_init: LAPIC version: %x, max lvt: %d\n", ver.ver.version, ver.ver.max_lvt_entry);
-
     cpuid_thermal_t thermal_info;
     cpuid_thermal(&thermal_info);
 
@@ -29,29 +24,19 @@ static void lapic_timer_init(uint32_t period)
         printk("lapic_timer_init: WARNING: APIC timer is not persistent\n");
     }
 
-    printk("lapic_timer_init: period: %u\n", period);
-
-    printk("lapic_timer_init: A TR: %p\n", reg[APIC_LVT_TR_IDX]);
-
     apic_lvt_reg_t timer = {
         .lvt = {
             .vector = IDT_VECTOR_TIMER,
             .timer_mode = APIC_TIMER_PERIODIC,
         }
     };
-    reg[APIC_LVT_TR_IDX] = timer;
-
-    printk("lapic_timer_init: B TR: %p\n", reg[APIC_LVT_TR_IDX]);
-    printk("lapic_timer_init: B TR.vector: %u\n", reg[APIC_LVT_TR_IDX].lvt.vector);
+    lapic_reg[APIC_LVT_TR_IDX] = timer;
 
     // Set divide configuration register
-    reg[APIC_DIV_CONFIG_IDX].timer.divide = APIC_TIMER_DIV128;
-    printk("lapic_timer_init: Timer: %u, %u\n", reg[APIC_DIV_CONFIG_IDX].timer.divide, APIC_TIMER_DIV16);
+    lapic_reg[APIC_DIV_CONFIG_IDX].timer.divide = APIC_TIMER_DIV128;
 
     // Set initial-count register
-    reg[APIC_INIT_COUNT_IDX].raw = period;
-
-    sti();
+    lapic_reg[APIC_INIT_COUNT_IDX].raw = period;
 }
 
 // Disable Intel 8259 PIC
@@ -70,11 +55,16 @@ static void pic_disable(void)
     outb(PIC_DATA_SLAVE, 0xff);
 }
 
-// Send EOI
-void lapic_eoi(void)
+// Send End Of Interrupt
+void lapic_send_eoi(void)
 {
-    apic_lvt_reg_t volatile *reg = lapic_base_vma;
-    reg[APIC_EOI_IDX].raw = 0;
+    lapic_reg[APIC_EOI_IDX].raw = 0;
+}
+
+// Get error status register
+apic_lvt_reg_t lapic_get_esr(void)
+{
+    return lapic_reg[APIC_ESR_IDX];
 }
 
 uintptr_t lvt_get_page_pma(void)
@@ -89,7 +79,6 @@ uintptr_t lvt_get_page_pma(void)
 void apic_init(void)
 {
     pic_disable();
-    printk("apic_init: PIC has been disabled\n");
 
     // TODO if the below checks fail, configure the legacy x86 PIC instead of
     // disabling it above
@@ -121,6 +110,7 @@ void apic_init(void)
 
     // Map page lapic registers
     lapic_base_vma = kalloc(&lvt_get_page_pma, PAGE_SIZE, PAGE_SIZE);
+    lapic_reg = lapic_base_vma;
 
     lapic_timer_init(0x10000);
 }

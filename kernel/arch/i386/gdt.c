@@ -11,24 +11,18 @@
  *   bits 15:3 ->    index (the index into the GDT given the declaration: uint64_t
  *                   GDT[])
  *   bit     2 ->    0 = GDT,    1 = LDT (Local Descriptor Table)
- *   bits  1:0 ->    Requested Privelege Level (ring value)
+ *   bits  1:0 ->    Requested Privilege Level (ring value)
  *
  * For official documentation on segment selectors, see Intel Software
  * Development Manual, Vol. 3A, section 3.4.1.
  */
 
+#include "asm.h"
 #include "gdt.h"
-#include "std.h"
 
-// Global Descriptor Table
-extern gdt_t GDT[5];
-gdt_t GDT[5];
-
-// This is the 6 byte value to load into the GDT register with the `lgdt`
-// instruction
-static uint64_t gdt_desc;
-
-void gdt_load(gdt_t *gdt, size_t size);
+static gdt_t GDT[GDT_IDX_LIMIT];    // Global Descriptor Table
+tss_t TSS = { 0 };                  // Task State Segment
+static uint64_t gdt_sel;
 
 // Returns gdt descriptor
 static uint64_t gdt_descriptor(uint32_t base, uint32_t limit, uint16_t flags)
@@ -51,31 +45,28 @@ static uint64_t gdt_descriptor(uint32_t base, uint32_t limit, uint16_t flags)
  */
 void gdt_init(void)
 {
-    gdt_desc = ((uint64_t)(uintptr_t)GDT << 16) | sizeof(GDT);
-
     // Create null descriptor
-    GDT[0] = gdt_descriptor(0, 0, 0);
+    GDT[GDT_IDX_NULL] = gdt_descriptor(0, 0, 0);
+
     // Open up entire 4GiB address space to rings 0 and 3
-    GDT[1] = gdt_descriptor(0, 0xfffff, GDT_CODE_PL0);
-    GDT[2] = gdt_descriptor(0, 0xfffff, GDT_DATA_PL0);
-    GDT[3] = gdt_descriptor(0, 0xfffff, GDT_CODE_PL3);
-    GDT[4] = gdt_descriptor(0, 0xfffff, GDT_DATA_PL3);
+    GDT[GDT_IDX_CODE_PL0] = gdt_descriptor(0, 0xfffff, GDT_CODE_PL0);
+    GDT[GDT_IDX_DATA_PL0] = gdt_descriptor(0, 0xfffff, GDT_DATA_PL0);
+    GDT[GDT_IDX_TSS_PL0]  = gdt_descriptor((uintptr_t)&TSS, sizeof(TSS), GDT_TSS_PL0);
+    GDT[GDT_IDX_CODE_PL3] = gdt_descriptor(0, 0xfffff, GDT_CODE_PL3);
+    GDT[GDT_IDX_DATA_PL3] = gdt_descriptor(0, 0xfffff, GDT_DATA_PL3);
+    GDT[GDT_IDX_TSS_PL3]  = gdt_descriptor((uintptr_t)&TSS, sizeof(TSS), GDT_TSS_PL3);
 
-    asm (
-        "lgdt    (%0)\n\t"
-        // Load selector for ring 0 pointing to entry 1 of GDT
-        "ljmp    $0x08,      $gdt_reload_cs\n"
+    TSS.ss0  = GDT_SEL_DATA_PL0;
+    TSS.esp0 = (uintptr_t)0;
 
-    "gdt_reload_cs:\n\t"
-        // Load selector for ring 0 pointing to entry 2 of GDT
-        "movw    %1,    %%ds\n\t"
-        "movw    %1,    %%es\n\t"
-        "movw    %1,    %%fs\n\t"
-        "movw    %1,    %%gs\n\t"
-        "movw    %1,    %%ss\n\t"
-        : // No outputs
-        : "r" (&gdt_desc),
-          "rm" ((uint16_t)0x10)
-        : // No clobbers
-    );
+    gdt_sel = ((uint64_t)(uintptr_t)&GDT << 16) | (uint64_t)sizeof(GDT);
+    load_gdt(&gdt_sel);
+
+    set_cs(GDT_SEL_CODE_PL0);
+    set_ds(GDT_SEL_DATA_PL0);
+    set_es(GDT_SEL_DATA_PL0);
+    set_fs(GDT_SEL_DATA_PL0);
+    set_gs(GDT_SEL_DATA_PL0);
+    set_ss(GDT_SEL_DATA_PL0);
+    set_tr(GDT_SEL_TSS_PL3);
 }

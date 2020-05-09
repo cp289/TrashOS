@@ -27,6 +27,75 @@ enum {
     IDT_GATE_TRAP32         = 0x78, // 32-bit trap gate type
 };
 
+// Possible causes for page faults
+// NOTE: some of the below causes are impossible
+enum {
+    SUPERVISOR_NOT_PRESENT = 0,
+    SUPERVISOR_VIOLATION,
+    SUPERVISOR_WRITE_NOT_PRESENT,
+    SUPERVISOR_WRITE_VIOLATION,
+    USER_NOT_PRESENT,
+    USER_VIOLATION,
+    USER_WRITE_NOT_PRESENT,
+    USER_WRITE_VIOLATION,
+    RESERVED_SUPERVISOR_NOT_PRESENT,
+    RESERVED_SUPERVISOR_VIOLATION,
+    RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
+    RESERVED_SUPERVISOR_WRITE_VIOLATION,
+    RESERVED_USER_NOT_PRESENT,
+    RESERVED_USER_VIOLATION,
+    RESERVED_USER_WRITE_NOT_PRESENT,
+    RESERVED_USER_WRITE_VIOLATION,
+    FETCH_SUPERVISOR_NOT_PRESENT,
+    FETCH_SUPERVISOR_VIOLATION,
+    FETCH_SUPERVISOR_WRITE_NOT_PRESENT,
+    FETCH_SUPERVISOR_WRITE_VIOLATION,
+    FETCH_USER_NOT_PRESENT,
+    FETCH_USER_VIOLATION,
+    FETCH_USER_WRITE_NOT_PRESENT,
+    FETCH_USER_WRITE_VIOLATION,
+    FETCH_RESERVED_SUPERVISOR_NOT_PRESENT,
+    FETCH_RESERVED_SUPERVISOR_VIOLATION,
+    FETCH_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
+    FETCH_RESERVED_SUPERVISOR_WRITE_VIOLATION,
+    FETCH_RESERVED_USER_NOT_PRESENT,
+    FETCH_RESERVED_USER_VIOLATION,
+    FETCH_RESERVED_USER_WRITE_NOT_PRESENT,
+    FETCH_RESERVED_USER_WRITE_VIOLATION,
+    PROTECTION_SUPERVISOR_NOT_PRESENT,
+    PROTECTION_SUPERVISOR_VIOLATION,
+    PROTECTION_SUPERVISOR_WRITE_NOT_PRESENT,
+    PROTECTION_SUPERVISOR_WRITE_VIOLATION,
+    PROTECTION_USER_NOT_PRESENT,
+    PROTECTION_USER_VIOLATION,
+    PROTECTION_USER_WRITE_NOT_PRESENT,
+    PROTECTION_USER_WRITE_VIOLATION,
+    PROTECTION_RESERVED_SUPERVISOR_NOT_PRESENT,
+    PROTECTION_RESERVED_SUPERVISOR_VIOLATION,
+    PROTECTION_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
+    PROTECTION_RESERVED_SUPERVISOR_WRITE_VIOLATION,
+    PROTECTION_RESERVED_USER_NOT_PRESENT,
+    PROTECTION_RESERVED_USER_VIOLATION,
+    PROTECTION_RESERVED_USER_WRITE_NOT_PRESENT,
+    PROTECTION_RESERVED_USER_WRITE_VIOLATION,
+    PROTECTION_FETCH_SUPERVISOR_NOT_PRESENT,
+    PROTECTION_FETCH_SUPERVISOR_VIOLATION,
+    PROTECTION_FETCH_SUPERVISOR_WRITE_NOT_PRESENT,
+    PROTECTION_FETCH_SUPERVISOR_WRITE_VIOLATION,
+    PROTECTION_FETCH_USER_NOT_PRESENT,
+    PROTECTION_FETCH_USER_VIOLATION,
+    PROTECTION_FETCH_USER_WRITE_NOT_PRESENT,
+    PROTECTION_FETCH_USER_WRITE_VIOLATION,
+    PROTECTION_FETCH_RESERVED_SUPERVISOR_NOT_PRESENT,
+    PROTECTION_FETCH_RESERVED_SUPERVISOR_VIOLATION,
+    PROTECTION_FETCH_RESERVED_SUPERVISOR_WRITE_NOT_PRESENT,
+    PROTECTION_FETCH_RESERVED_SUPERVISOR_WRITE_VIOLATION,
+    PROTECTION_FETCH_RESERVED_USER_NOT_PRESENT,
+    PROTECTION_FETCH_RESERVED_USER_VIOLATION,
+    PROTECTION_FETCH_RESERVED_USER_WRITE_NOT_PRESENT,
+    PROTECTION_FETCH_RESERVED_USER_WRITE_VIOLATION,
+};
+
 /**
  * NOTE: According to the Intel Software Developer's Manual, vol. 3, section
  * 6.12.1, the stack has EFLAGS, CS, EIP, and (sometimes) an Error Code pushed
@@ -45,6 +114,8 @@ typedef struct
     uintptr_t ip;
     uintptr_t cs;
     uintptr_t flags;
+    uintptr_t sp;       // Only present for privilege change
+    uintptr_t ss;       // Only present for privilege change
 } interrupt_frame_t;
 
 typedef struct
@@ -53,13 +124,26 @@ typedef struct
     uint64_t selector   : 16;   // Code segment selector
     uint64_t _reserved0 : 5;
     uint64_t type       : 8;    // Gate type
-    uint64_t dpl        : 2;    // Destination privelege level
+    uint64_t dpl        : 2;    // Destination privilege level
     uint64_t present    : 1;    // Segment present flag
     uint64_t offset_hi  : 16;   // Offset 31:16
 } idt_descriptor_t;
 
-// Interrupt description string table
-extern char *interrupt_description[];
+typedef union
+{
+    uintptr_t raw;
+    struct {
+        uintptr_t violation     : 1; // 0: non-present page, 1: protection violation
+        uintptr_t write         : 1; // Caused by a write
+        uintptr_t user_mode     : 1; // Caused in user_mode
+        uintptr_t reserved      : 1; // Caused by RSVD flag
+        uintptr_t instruction   : 1; // Caused by instruction fetch
+        uintptr_t protection    : 1; // Caused by protection-key violation
+        uintptr_t _reserved0    : 9;
+        uintptr_t sgx           : 1; // Caused by violation of SGX-specific access control
+        uintptr_t _reserved1    : 16;
+    };
+} error_code_page_t;
 
 void idt_init(void);
 
