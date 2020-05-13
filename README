@@ -11,14 +11,14 @@ _elf_targets within /cross-gcc/PKGBUILD as necessary and run `makepkg -s` to
 build the cross-gcc package.
 
 Once necessary cross compilers are installed, modify make.config as needed.
-Below are the supported make.config contents.
+Below are possible make.config contents.
 
 To build i386 system:
     
     ARCH?=i386
     MARCH?=i686
 
-To build x86_64 system:
+To build x86_64 system (NOT YET SUPPORTED):
     
     ARCH?=x86_64
     MARCH?=x86_64
@@ -27,5 +27,9 @@ Lastly, simply run `make`.
 
 #####   DOCUMENTATION   #####
 
-For a guide on the learning/development process of this project, run
-`make guide.pdf`.
+For a guide on the learning/development process of this project, run:
+
+    make guide.pdf
+
+This document requires `pdflatex` to build. The guide currently remains a
+work-in-progress.
