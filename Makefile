@@ -29,7 +29,7 @@ KOBJS=\
 	$(ARCHDIR)/boot.o \
 	$(ARCHDIR)/gdt.o \
 	$(ARCHDIR)/init.o \
-	$(ARCHDIR)/interrupt.o \
+	$(ARCHDIR)/int.o \
 	$(ARCHDIR)/int_asm.o \
 	$(ARCHDIR)/kernel.o \
 	$(ARCHDIR)/printk.o \
@@ -46,7 +46,7 @@ KHDRS=\
 	$(ARCHDIR)/asm.h \
 	$(ARCHDIR)/cpuid.h \
 	$(ARCHDIR)/gdt.h \
-	$(ARCHDIR)/interrupt.h \
+	$(ARCHDIR)/int.h \
 	$(ARCHDIR)/io.h \
 	$(ARCHDIR)/math.h \
 	$(ARCHDIR)/mem.h \
@@ -72,7 +72,7 @@ all: $(ISO)
 $(KOBJS): $(KHDRS)
 
 # Special rule for compiling interrupt handlers
-$(ARCHDIR)/interrupt.o: $(ARCHDIR)/interrupt.c
+$(ARCHDIR)/int.o: $(ARCHDIR)/int.c
 	$(CC) -c $< -o $@ $(CPPFLAGS) $(CFLAGS) -mgeneral-regs-only
 
 # Since init*.o are placed into a custom section, we must compile without LTO

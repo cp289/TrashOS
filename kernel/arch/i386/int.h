@@ -145,6 +145,6 @@ typedef union
     };
 } error_code_page_t;
 
-void idt_init(void);
+void int_init(void);
 
 #endif // _KERNEL_INTERRUPT_H

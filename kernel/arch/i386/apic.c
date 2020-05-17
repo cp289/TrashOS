@@ -6,7 +6,7 @@
 #include "apic.h"
 #include "asm.h"
 #include "cpuid.h"
-#include "interrupt.h"
+#include "int.h"
 #include "io.h"
 #include "page.h"
 

@@ -1,11 +1,11 @@
 /**
- * interrupt.c: Interrrupts
+ * int.c: Interrrupts
  */
 
 #include "apic.h"
 #include "asm.h"
 #include "gdt.h"
-#include "interrupt.h"
+#include "int.h"
 #include "io.h"
 #include "proc.h"
 
@@ -14,7 +14,7 @@ static idt_descriptor_t idt[IDT_SIZE];
 static uint64_t idtr;
 
 // TODO delete this
-char *interrupt_string[] = {
+char *int_string[] = {
     "Divide Error",
     "Debug Exception",
     "NMI Interrupt",
@@ -50,14 +50,14 @@ char *interrupt_string[] = {
 };
 
 // Handle generic interrupt
-INTERRUPT handle_interrupt(interrupt_frame_t *ctxt)
+INTERRUPT int_handle_interrupt(interrupt_frame_t *ctxt)
 {
     printk("INT: IP: %p CS: %p FLAGS: %p\n", ctxt->ip, ctxt->cs, ctxt->flags);
     halt();
 }
 
 // Handle generic exception (has error code)
-INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
+INTERRUPT int_handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
 {
     printk("EXC: IP: %p CS: %p FLAGS: %p ERROR: %u\n", ctxt->ip, ctxt->cs,
             ctxt->flags, error_code);
@@ -65,63 +65,63 @@ INTERRUPT handle_exception(interrupt_frame_t *ctxt, uintptr_t error_code)
 }
 
 // Interrupt 0
-INTERRUPT handle_divide_error(interrupt_frame_t *frame)
+INTERRUPT int_handle_divide_error(interrupt_frame_t *frame)
 {
     printk("Divide Error Exception: ip: %p", frame->ip);
     halt();
 }
 
 // Interrupt 1
-INTERRUPT handle_debug(interrupt_frame_t *frame)
+INTERRUPT int_handle_debug(interrupt_frame_t *frame)
 {
     printk("Debug Exception: ip: %p\n", frame->ip);
     halt();
 }
 
 // Interrupt 2
-INTERRUPT handle_nmi_interrupt(interrupt_frame_t *frame)
+INTERRUPT int_handle_nmi_interrupt(interrupt_frame_t *frame)
 {
     printk("NMI Interrupt: ip: %p\n", frame->ip);
     halt();
 }
 
 // Interrupt 3
-INTERRUPT handle_breakpoint(interrupt_frame_t *frame)
+INTERRUPT int_handle_breakpoint(interrupt_frame_t *frame)
 {
     printk("Breakpoint Exception: ip: %p\n", frame->ip);
     halt();
 }
 
 // Interrupt 4
-INTERRUPT handle_overflow(interrupt_frame_t *frame)
+INTERRUPT int_handle_overflow(interrupt_frame_t *frame)
 {
     printk("Overflow Exception: ip: %p\n", frame->ip);
     halt();
 }
 
 // Interrupt 5
-INTERRUPT handle_bound_range_exceeded(interrupt_frame_t *frame)
+INTERRUPT int_handle_bound_range_exceeded(interrupt_frame_t *frame)
 {
     printk("BOUND Range Exceeded Exception: ip: %p\n", frame->ip);
     halt();
 }
 
 // Interrupt 6
-INTERRUPT handle_invalid_opcode(interrupt_frame_t *frame)
+INTERRUPT int_handle_invalid_opcode(interrupt_frame_t *frame)
 {
     printk("Invalid Opcode Exception: ip: %p\n", frame->ip);
     halt();
 }
 
 // Interrupt 7
-INTERRUPT handle_device_not_available(interrupt_frame_t *frame)
+INTERRUPT int_handle_device_not_available(interrupt_frame_t *frame)
 {
     printk("Device Not Available Exception: ip: %p\n", frame->ip);
     halt();
 }
 
 // Interrupt 8
-INTERRUPT handle_double_fault(interrupt_frame_t *frame, uintptr_t error)
+INTERRUPT int_handle_double_fault(interrupt_frame_t *frame, uintptr_t error)
 {
     // NOTE error is always zero
     printk("Double Fault Exception: ip: %p, error: %p\n", frame->ip, error);
@@ -129,42 +129,42 @@ INTERRUPT handle_double_fault(interrupt_frame_t *frame, uintptr_t error)
 }
 
 // Interrupt 9
-INTERRUPT handle_coprocessor_segment_overrun(interrupt_frame_t *frame)
+INTERRUPT int_handle_coprocessor_segment_overrun(interrupt_frame_t *frame)
 {
     printk("Coprocessor Segment Overrun: ip: %p\n", frame->ip);
     halt();
 }
 
 // Interrupt 10
-INTERRUPT handle_invalid_tss(interrupt_frame_t *frame, uintptr_t error)
+INTERRUPT int_handle_invalid_tss(interrupt_frame_t *frame, uintptr_t error)
 {
     printk("Invalid TSS Exception: ip: %p, error: %p\n", frame->ip, error);
     halt();
 }
 
 // Interrupt 11
-INTERRUPT handle_segment_not_present(interrupt_frame_t *frame, uintptr_t error)
+INTERRUPT int_handle_segment_not_present(interrupt_frame_t *frame, uintptr_t error)
 {
     printk("Segment Not present: ip: %p, error: %p\n", frame->ip, error);
     halt();
 }
 
 // Interrupt 12
-INTERRUPT handle_stack_fault(interrupt_frame_t *frame, uintptr_t error)
+INTERRUPT int_handle_stack_fault(interrupt_frame_t *frame, uintptr_t error)
 {
     printk("Stack Fault Exception: ip: %p, error: %p\n", frame->ip, error);
     halt();
 }
 
 // Interrupt 13
-INTERRUPT handle_general_protection(interrupt_frame_t *frame, uintptr_t error)
+INTERRUPT int_handle_general_protection(interrupt_frame_t *frame, uintptr_t error)
 {
     printk("General Protection Exception: ip: %p, error: %p\n", frame->ip, error);
     halt();
 }
 
 // Interrupt 14
-INTERRUPT handle_page_fault(interrupt_frame_t *ctxt, uintptr_t error_raw)
+INTERRUPT int_handle_page_fault(interrupt_frame_t *ctxt, uintptr_t error_raw)
 {
     error_code_page_t error = { .raw = error_raw };
 
@@ -184,7 +184,7 @@ INTERRUPT handle_page_fault(interrupt_frame_t *ctxt, uintptr_t error_raw)
     halt();
 }
 
-INTERRUPT handle_unknown(interrupt_frame_t *frame)
+INTERRUPT int_handle_unknown(interrupt_frame_t *frame)
 {
     printk("UNKNOWN INTERRUPT! %p", frame);
     halt();
@@ -205,78 +205,79 @@ idt_descriptor(void (*handler)(), reg_t sel, int type, int dpl)
 
 void int_handle_proc_switch(void);  // See int_asm.s for implementation
 
-static void idt_init_vectors(void)
+static void int_init_vectors(void)
 {
     // Initialize IDT with default handlers
     for (int i = 0; i < IDT_SIZE; i++) {
         switch (i) {
         case 0:
-            idt[i] = idt_descriptor(&handle_divide_error, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_divide_error, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 1:
-            idt[i] = idt_descriptor(&handle_debug, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_debug, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 2:
-            idt[i] = idt_descriptor(&handle_nmi_interrupt, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_nmi_interrupt, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 3:
-            idt[i] = idt_descriptor(&handle_breakpoint, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_breakpoint, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 4:
-            idt[i] = idt_descriptor(&handle_overflow, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_overflow, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 5:
-            idt[i] = idt_descriptor(&handle_bound_range_exceeded,
+            idt[i] = idt_descriptor(&int_handle_bound_range_exceeded,
                                     GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
                                     RING0);
             break;
         case 6:
-            idt[i] = idt_descriptor(&handle_invalid_opcode, GDT_SEL_CODE_PL0,
-                                    IDT_GATE_INTERRUPT32, RING0);
+            idt[i] = idt_descriptor(&int_handle_invalid_opcode,
+                                    GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
+                                    RING0);
             break;
         case 7:
-            idt[i] = idt_descriptor(&handle_device_not_available,
+            idt[i] = idt_descriptor(&int_handle_device_not_available,
                                     GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
                                     RING0);
             break;
         case 8:
-            idt[i] = idt_descriptor(&handle_double_fault, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_double_fault, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 9:
-            idt[i] = idt_descriptor(&handle_coprocessor_segment_overrun,
+            idt[i] = idt_descriptor(&int_handle_coprocessor_segment_overrun,
                                     GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
                                     RING0);
             break;
         case 10:
-            idt[i] = idt_descriptor(&handle_invalid_tss, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_invalid_tss, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 11:
-            idt[i] = idt_descriptor(&handle_segment_not_present,
+            idt[i] = idt_descriptor(&int_handle_segment_not_present,
                                     GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
                                     RING0);
             break;
         case 12:
-            idt[i] = idt_descriptor(&handle_stack_fault, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_stack_fault, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 13:
-            idt[i] = idt_descriptor(&handle_general_protection,
+            idt[i] = idt_descriptor(&int_handle_general_protection,
                                     GDT_SEL_CODE_PL0, IDT_GATE_INTERRUPT32,
                                     RING0);
             break;
         case 14:
-            idt[i] = idt_descriptor(&handle_page_fault, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_page_fault, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case 17:
-            idt[i] = idt_descriptor(&handle_exception, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_exception, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         case IDT_VECTOR_TIMER:
@@ -284,14 +285,14 @@ static void idt_init_vectors(void)
                                     IDT_GATE_INTERRUPT32, RING0);
             break;
         default:
-            idt[i] = idt_descriptor(&handle_unknown, GDT_SEL_CODE_PL0,
+            idt[i] = idt_descriptor(&int_handle_unknown, GDT_SEL_CODE_PL0,
                                     IDT_GATE_INTERRUPT32, RING0);
         }
     }
 }
 
 // Tell processor where IDT is
-static inline void idt_load(void)
+static inline void int_load_idt(void)
 {
     // IDTR Register:
     //  bits 47:16  IDT base address
@@ -309,8 +310,8 @@ static inline void idt_load(void)
     );
 }
 
-void idt_init(void)
+void int_init(void)
 {
-    idt_init_vectors();
-    idt_load();
+    int_init_vectors();
+    int_load_idt();
 }

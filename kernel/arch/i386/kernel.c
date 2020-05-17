@@ -7,7 +7,7 @@
 #include "asm.h"
 #include "cpuid.h"
 #include "gdt.h"
-#include "interrupt.h"
+#include "int.h"
 #include "io.h"
 #include "page.h"
 #include "proc.h"
@@ -33,7 +33,7 @@ void kernel_main(void)
      */
     vga_clear();
     gdt_init();
-    idt_init();
+    int_init();
     page_init_cleanup();
     apic_init();
     proc_init();
