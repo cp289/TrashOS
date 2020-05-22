@@ -41,6 +41,7 @@ KOBJS=\
 	$(ARCHDIR)/init_vga.o \
 
 KHDRS=\
+	$(ARCHDIR)/_print.c \
 	$(ARCHDIR)/alloc.h \
 	$(ARCHDIR)/apic.h \
 	$(ARCHDIR)/asm.h \

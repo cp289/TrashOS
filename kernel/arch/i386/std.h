@@ -14,6 +14,9 @@ enum {
     BITS_PER_BYTE = 8,
 };
 
+// TODO this will only work for 32-bit systems!
+typedef int32_t ssize_t;
+
 // Register storage classes
 typedef uintptr_t reg_t;
 typedef uint16_t reg16_t;

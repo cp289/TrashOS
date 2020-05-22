@@ -17,9 +17,9 @@
  * corresponding message in the string table. Determine whether a global string
  * table (for the entire kernel) or a local string table makes more sense.
  */
-int printk(const char *format, ... );
+ssize_t printk(const char *format, ... );
 // Variant for init section
-int init_printk(const char *format, ... );
+ssize_t init_printk(const char *format, ... );
 
 static inline void outb(uint16_t port, uint8_t byte)
 {
